@@ -1,5 +1,8 @@
 #include "GAMER.h"
 
+// include library for string manipulation
+#include <string>
+
 // declare as static so that other functions cannot invoke it directly and must use the function pointer
 static void Init_ByFile_Default( real fluid_out[], const real fluid_in[], const int nvar_in,
                                  const double x, const double y, const double z, const double Time,
@@ -55,7 +58,7 @@ void Init_ByFile()
    if ( MPI_Rank == 0 )    Aux_Message( stdout, "%s ...\n", __FUNCTION__ );
 
 
-   const char UM_Filename[] = "UM_IC";
+   string UM_Filename = "UM_IC";
    const long UM_Size3D[3]  = { NX0_TOT[0]*(1<<OPT__UM_IC_LEVEL),
                                 NX0_TOT[1]*(1<<OPT__UM_IC_LEVEL),
                                 NX0_TOT[2]*(1<<OPT__UM_IC_LEVEL) };
@@ -167,7 +170,13 @@ void Init_ByFile()
 
 
 // 3. assign data on level OPT__UM_IC_LEVEL by the input file UM_IC
-   Init_ByFile_AssignData( UM_Filename, OPT__UM_IC_LEVEL, OPT__UM_IC_NVAR, OPT__UM_IC_LOAD_NRANK, OPT__UM_IC_FORMAT );
+   //###
+   for (int lv=OPT__UM_IC_LEVEL_MAX; lv>=OPT__UM_IC_LEVEL_MIN; lv--) {
+      string lv_str  = std::to_string(lv);
+      UM_Filename_lv = UM_Filename + '_lv' + l_str;
+      Init_ByFile_AssignData( UM_Filename_lv, lv, OPT__UM_IC_NVAR, OPT__UM_IC_LOAD_NRANK, OPT__UM_IC_FORMAT );
+   }
+   
 
 #  ifdef LOAD_BALANCE
    Buf_GetBufferData( OPT__UM_IC_LEVEL, amr->FluSg[OPT__UM_IC_LEVEL], NULL_INT, DATA_GENERAL, _TOTAL,
@@ -309,7 +318,7 @@ void Init_ByFile()
 //
 // Return      :  amr->patch->fluid
 //-------------------------------------------------------------------------------------------------------
-void Init_ByFile_AssignData( const char UM_Filename[], const int UM_lv, const int UM_NVar, const int UM_LoadNRank,
+void Init_ByFile_AssignData( const string UM_Filename, const int UM_lv, const int UM_NVar, const int UM_LoadNRank,
                              const UM_IC_Format_t UM_Format )
 {
 
@@ -319,10 +328,12 @@ void Init_ByFile_AssignData( const char UM_Filename[], const int UM_lv, const in
 // check
    if ( Init_ByFile_User_Ptr == NULL )  Aux_Error( ERROR_INFO, "Init_ByFile_User_Ptr == NULL !!\n" );
 
-
-   const long   UM_Size3D[3] = { NX0_TOT[0]*(1<<UM_lv),
-                                 NX0_TOT[1]*(1<<UM_lv),
-                                 NX0_TOT[2]*(1<<UM_lv) };
+   //### set UM_Size3D[3] = {512, 512, 512}
+   const long UM_Size3D[3]    = {256, 256, 256};
+   const int  FileIdx_Offset  = 128; 
+   //const long   UM_Size3D[3] = { NX0_TOT[0]*(1<<UM_lv),
+   //                              NX0_TOT[1]*(1<<UM_lv),
+   //                              NX0_TOT[2]*(1<<UM_lv) };
    const long   UM_Size1v    =  UM_Size3D[0]*UM_Size3D[1]*UM_Size3D[2];
    const int    NVarPerLoad  = ( UM_Format == UM_IC_FORMAT_ZYXV ) ? UM_NVar : 1;
    const int    scale        = amr->scale[UM_lv];
@@ -350,6 +361,8 @@ void Init_ByFile_AssignData( const char UM_Filename[], const int UM_lv, const in
          {
 //          calculate the file offset of the target patch group
             for (int d=0; d<3; d++)    Offset3D_File0[d] = amr->patch[0][UM_lv][PID0]->corner[d] / scale;
+            // 
+            for (int d=0; d<3; d++)    Offset2D_File0[d] -= FileIdx_Offset ;
 
             Offset_File0  = IDX321( Offset3D_File0[0], Offset3D_File0[1], Offset3D_File0[2], UM_Size3D[0], UM_Size3D[1] );
             Offset_File0 *= (long)NVarPerLoad*sizeof(real);

@@ -80,10 +80,23 @@ void Init_UniformGrid( const int lv, const bool FindHomePatchForPar )
 
 // 2. allocate real patches on lv
    const int PScale = PS1*scale;
-
-   for (int k=0; k<NPG_EachDim[2]; k++)   {  Cr[2] = k*PS2*scale;
-   for (int j=0; j<NPG_EachDim[1]; j++)   {  Cr[1] = j*PS2*scale;
-   for (int i=0; i<NPG_EachDim[0]; i++)   {  Cr[0] = i*PS2*scale;
+   
+   //###
+   if (lv>= OPT__UM_IC_LEVEL_MIN) {
+      const int Start_Idx[3] = {NPG_EachDim[0]/2-128, NPG_EachDim[1]/2-128, NPG_EachDim[2]/2-128};
+      const int End_Idx[3]   = {Start_Idx[0]+256,     Start_Idx[1]+256,     Start_Idx[2]+256} ;
+   }
+   else {
+      const int Start_Idx[3] = {0, 0, 0};
+      const int End_Idx[3]   = {NPG_EachDim[0], NPG_EachDim[1], NPG_EachDim[2]} ;
+   }
+   
+   //for (int k=0; k<NPG_EachDim[2]; k++)   {  Cr[2] = k*PS2*scale;
+   //for (int j=0; j<NPG_EachDim[1]; j++)   {  Cr[1] = j*PS2*scale;
+   //for (int i=0; i<NPG_EachDim[0]; i++)   {  Cr[0] = i*PS2*scale;
+   for (int k=Start_Idx[2]; k<End_Idx[2]; k++)   {  Cr[2] = k*PS2*scale;
+   for (int j=Start_Idx[1]; j<End_Idx[1]; j++)   {  Cr[1] = j*PS2*scale;
+   for (int i=Start_Idx[0]; i<End_Idx[0]; i++)   {  Cr[0] = i*PS2*scale;
 
 #     ifdef LOAD_BALANCE
       const long LBIdx0 = LB_Corner2Index( lv, Cr, CHECK_ON );
