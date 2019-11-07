@@ -53,24 +53,12 @@ void   CPU_ExternalAcc( real Acc[], const double X, const double Y, const double
    if (TESTPROB_ID == 21) {
       const real Rayleigh_Disk_Slope = UserArray[0] ;
       
-      Acc[0] = -POW( X, -Rayleigh_Disk_Slope ) ;
-      //Acc[0] = -POW( X, -2.0 ) ;
+      Acc[0] = -POW( X, 1.0-2*Rayleigh_Disk_Slope ) ;
       Acc[1] = (real) 0.0 ;
       Acc[2] = (real) 0.0 ;
       
       return ;
-   }
-   
-   //### customize for Kuzmin disk test problem
-   if (TESTPROB_ID == 23) {
-      
-      Acc[0] = (real) 0.0 ;
-      Acc[1] = (real) 0.0 ;
-      Acc[2] = (real) 0.0 ;
-      
-      return ;
-   }
-   
+   }   
    
    const double Cen[3] = { UserArray[0], UserArray[1], UserArray[2] };
    const real GM       = (real)UserArray[3];

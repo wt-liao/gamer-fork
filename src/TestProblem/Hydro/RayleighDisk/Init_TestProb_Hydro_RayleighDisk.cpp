@@ -155,19 +155,21 @@ void SetParameter()
 void SetGridIC( real fluid[], const double x, const double y, const double z, const double Time,
                 const int lv, double AuxArray[] )
 {
-   // Keplerian: n = 2
-   // unstable disk: n > 3
+   // Keplerian: n = 1.5
+   // unstable disk: n > 2
    
-   // g       = r^(-n)
-   // v_theta = r^( (1-n)/2) )
+   // g       = r^(1-2n)
+   // v_theta = r^(-n)
    
-   const real density  = (real) 50.0 ;
+   const real density  = (real) 1.0 ;
+   const real Pressure = (real) 1.0 ;
    const real n        = Rayleigh_Slope ;
    const real vel_amp  = (real) 0.0001 ;
    const real r_inner  = amr->BoxEdgeL[0] + 0.5*amr->dh[0][0];
    const real r_size   = amr->BoxEdgeR[0] - amr->BoxEdgeL[0] ;
    const real wave_num = 1.0 ;
    const real wave_k   = (2.0*M_PI) / r_size * wave_num ; 
+   const real _Gamma_m1 = 1.0/(GAMMA-1.0);
    
    // set up random number gen
    RandomNumber_t *RNG = NULL;
@@ -176,12 +178,12 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
 
    fluid[DENS] = density;
    fluid[MOMX] = 0.0;
-   fluid[MOMY] = density*POW( x, 0.5*(1-n) );
+   fluid[MOMY] = density*POW( x, -n );
    fluid[MOMZ] = 0.0;
    
-   //fluid[MOMY] +=  RanVel ;
-   fluid[MOMY] += vel_amp*SIN( wave_k * (x-r_inner) ) ; 
-   fluid[ENGY] = 0.5 * SQR(fluid[MOMY]) / density + density*0.0001 ;
+   fluid[MOMY] +=  fluid[DENS]*RanVel ;
+   //fluid[MOMY] += vel_amp*SIN( wave_k * (x-r_inner) ) ; 
+   fluid[ENGY] = 0.5 * SQR(fluid[MOMY]) / density + Pressure*_Gamma_m1 ;
    
 
 } // FUNCTION : SetGridIC
@@ -218,14 +220,16 @@ void BC( real fluid[], const double x, const double y, const double z, const dou
          const int lv, double AuxArray[] )
 {
 
-   const real density  = (real) 50.0 ;
+   const real density  = (real) 1.0 ;
+   const real Pressure = (real) 1.0 ;
    const real n        = Rayleigh_Slope ;
+   const real _Gamma_m1 = 1.0/(GAMMA-1.0);
    
    fluid[DENS] = density;
    fluid[MOMX] = 0.0;
-   fluid[MOMY] = density*POW( x, 0.5*(1-n) );
+   fluid[MOMY] = density*POW( x, -n );
    fluid[MOMZ] = 0.0;
-   fluid[ENGY] = 0.5 * SQR(fluid[MOMY]) / density + density*0.0001 ;
+   fluid[ENGY] = 0.5 * SQR(fluid[MOMY]) / density + Pressure*_Gamma_m1 ;
 
 } // FUNCTION : BC
 
@@ -268,7 +272,7 @@ void Init_TestProb_Hydro_RayleighDisk()
    Flag_User_Ptr            = NULL;
    Mis_GetTimeStep_User_Ptr = NULL;
    Aux_Record_User_Ptr      = NULL;
-   BC_User_Ptr              = NULL;
+   BC_User_Ptr              = BC;
    Flu_ResetByUser_Func_Ptr = NULL;
    End_User_Ptr             = NULL;
 #ifdef GRAVITY
