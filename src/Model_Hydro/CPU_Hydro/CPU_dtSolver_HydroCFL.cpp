@@ -76,11 +76,13 @@ void CPU_dtSolver_HydroCFL( real dt_Array[], const real Flu_Array[][NCOMP_FLUID]
          MaxCFL  = FMAX( CurrCFL, MaxCFL );
          
          //### may also need cool_dt_safty: _dt_cool * safty (safty > 1; probably 10)
+#        ifdef COOLING
          if (CheckCool_dt) {
             CoolingFunc(cool_rate, PriVar);
             _dt_cool = cool_rate * (Gamma-1.0) / Pres ;
             MaxCFL   = FMAX(_dt_cool, MaxCFL) ;
          }
+#        endif
          
 #        endif
          
