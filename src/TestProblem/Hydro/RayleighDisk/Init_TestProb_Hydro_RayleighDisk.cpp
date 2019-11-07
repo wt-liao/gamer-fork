@@ -187,7 +187,7 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
 } // FUNCTION : SetGridIC
 
 
-
+#ifdef GRAVITY
 //-------------------------------------------------------------------------------------------------------
 // Function    :  Init_ExternalAcc
 //-------------------------------------------------------------------------------------------------------
@@ -196,7 +196,7 @@ void Init_ExternalAcc() {
    ExtAcc_AuxArray[0] = Rayleigh_Slope ;
 
 } // FUNCTION : Init_ExternalAcc
-
+#endif
 
 
 
@@ -271,7 +271,9 @@ void Init_TestProb_Hydro_RayleighDisk()
    BC_User_Ptr              = NULL;
    Flu_ResetByUser_Func_Ptr = NULL;
    End_User_Ptr             = NULL;
+#ifdef GRAVITY
    Init_ExternalAcc_Ptr     = Init_ExternalAcc;       // option: OPT__GRAVITY_TYPE=2/3; example: SelfGravity/Init_ExternalAcc.cpp
+#endif //GRAVITY
 #  endif // #if ( MODEL == HYDRO )
 
 

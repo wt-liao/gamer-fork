@@ -22,7 +22,6 @@ void Init_TestProb_Hydro_CylPoisson4Sphere();
 void Init_TestProb_Hydro_CylPoisson();
 void Init_TestProb_Hydro_RayleighDisk();
 void Init_TestProb_Hydro_KeplerianDisk();
-void Init_TestProb_Hydro_KuzminDisk();
 
 void Init_TestProb_Hydro_SGThinDisk();
 
@@ -70,7 +69,6 @@ void Init_TestProb()
       case TESTPROB_HYDRO_CYL_POISSON :                  Init_TestProb_Hydro_CylPoisson();                  break;
       case TESTPROB_HYDRO_RAYLEIGH_DISK :                Init_TestProb_Hydro_RayleighDisk();                break;
       case TESTPROB_HYDRO_KEPLERIAN_DISK :               Init_TestProb_Hydro_KeplerianDisk();               break;
-      case TESTPROB_HYDRO_KUZMIN_DISK :                  Init_TestProb_Hydro_KuzminDisk();                  break;
       
       case TESTPROB_HYDRO_SG_THIN_DISK :                 Init_TestProb_Hydro_SGThinDisk();                  break;
 
