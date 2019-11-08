@@ -181,8 +181,8 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    fluid[MOMY] = density*POW( x, -n+1 );
    fluid[MOMZ] = 0.0;
    
-   fluid[MOMY] +=  fluid[DENS]*RanVel ;
-   //fluid[MOMY] += vel_amp*SIN( wave_k * (x-r_inner) ) ; 
+   //fluid[MOMY] +=  fluid[DENS]*RanVel ;
+   fluid[MOMY] += vel_amp*SIN( wave_k * (x-r_inner) ) ; 
    fluid[ENGY] = 0.5 * SQR(fluid[MOMY]) / density + Pressure*_Gamma_m1 ;
    
 
