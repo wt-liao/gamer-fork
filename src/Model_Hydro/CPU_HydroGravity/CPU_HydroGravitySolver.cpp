@@ -84,9 +84,10 @@ void CPU_HydroGravitySolver(       real Flu_Array_New[][GRA_NIN][PS1][PS1][PS1],
    double x, y, z;
    
    double geo_factor = 1.0 ;
-#  if (COORDINATE == CYLINDRICAL)
-   double radius ;
-#  endif
+   //#  if (COORDINATE == CYLINDRICAL)
+   //### need radius in cartesian bcuz omp needs it
+   double radius ;   
+   //#  endif
 
 
 // loop over all patches
