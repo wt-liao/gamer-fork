@@ -28,17 +28,26 @@
 void Init_UniformGrid( const int lv, const bool FindHomePatchForPar )
 {
 
-   const int NPG_EachDim[3] = { (NX0_TOT[0]/PS2)*(1<<lv), (NX0_TOT[1]/PS2)*(1<<lv), (NX0_TOT[2]/PS2)*(1<<lv) };
-   const int scale          = amr->scale[lv];
+   const int NPG_EachDim[3]      = { (NX0_TOT[0]/PS2)*(1<<lv), (NX0_TOT[1]/PS2)*(1<<lv), (NX0_TOT[2]/PS2)*(1<<lv) };
+   
+   if (lv >= OPT__UM_IC_LEVEL_MIN)
+      const int NPG_EachDim_C[3] = { (256/PS2), (256/PS2), (256/PS2) }; // NPG in the central pyramid region
+   else 
+      const int *NPG_EachDim_C   = *NPG_EachDim ;
+   
+   const int scale               = amr->scale[lv];
 
    int Cr[3];
-
+   
+   const int i0 = (NPG_EachDim[0] - NPG_EachDim_C[0])/2;
+   const int j0 = (NPG_EachDim[1] - NPG_EachDim_C[1])/2;
+   const int k0 = (NPG_EachDim[2] - NPG_EachDim_C[2])/2;
 
 // 1. set up the load-balance cut points amr->LB->CutPoint[] on lv
 #  ifdef LOAD_BALANCE
    const bool   InputLBIdx0AndLoad_Yes = true;
    const double ParWeight_Zero         = 0.0;
-   const long   NPG_Total              = (long)NPG_EachDim[0]*(long)NPG_EachDim[1]*(long)NPG_EachDim[2];
+   const long   NPG_Total              = (long)NPG_EachDim_C[0]*(long)NPG_EachDim_C[1]*(long)NPG_EachDim_C[2];
 
    long   *LBIdx0_AllRank = NULL;
    double *Load_AllRank   = NULL;
@@ -52,9 +61,9 @@ void Init_UniformGrid( const int lv, const bool FindHomePatchForPar )
 
       counter = 0;
 
-      for (int k=0; k<NPG_EachDim[2]; k++)   {  Cr[2] = k*PS2*scale;
-      for (int j=0; j<NPG_EachDim[1]; j++)   {  Cr[1] = j*PS2*scale;
-      for (int i=0; i<NPG_EachDim[0]; i++)   {  Cr[0] = i*PS2*scale;
+      for (int k=0; k<NPG_EachDim_C[2]; k++)   {  Cr[2] = (k+k0)*PS2*scale;
+      for (int j=0; j<NPG_EachDim_C[1]; j++)   {  Cr[1] = (j+j0)*PS2*scale;
+      for (int i=0; i<NPG_EachDim_C[0]; i++)   {  Cr[0] = (i+i0)*PS2*scale;
 
          LBIdx0_AllRank[counter]  = LB_Corner2Index( lv, Cr, CHECK_ON );
          LBIdx0_AllRank[counter] -= LBIdx0_AllRank[counter] % 8;  // get the minimum LBIdx in each patch group
@@ -81,22 +90,9 @@ void Init_UniformGrid( const int lv, const bool FindHomePatchForPar )
 // 2. allocate real patches on lv
    const int PScale = PS1*scale;
    
-   //###
-   if (lv>= OPT__UM_IC_LEVEL_MIN) {
-      const int Start_Idx[3] = {NPG_EachDim[0]/2-128, NPG_EachDim[1]/2-128, NPG_EachDim[2]/2-128};
-      const int End_Idx[3]   = {Start_Idx[0]+256,     Start_Idx[1]+256,     Start_Idx[2]+256} ;
-   }
-   else {
-      const int Start_Idx[3] = {0, 0, 0};
-      const int End_Idx[3]   = {NPG_EachDim[0], NPG_EachDim[1], NPG_EachDim[2]} ;
-   }
-   
-   //for (int k=0; k<NPG_EachDim[2]; k++)   {  Cr[2] = k*PS2*scale;
-   //for (int j=0; j<NPG_EachDim[1]; j++)   {  Cr[1] = j*PS2*scale;
-   //for (int i=0; i<NPG_EachDim[0]; i++)   {  Cr[0] = i*PS2*scale;
-   for (int k=Start_Idx[2]; k<End_Idx[2]; k++)   {  Cr[2] = k*PS2*scale;
-   for (int j=Start_Idx[1]; j<End_Idx[1]; j++)   {  Cr[1] = j*PS2*scale;
-   for (int i=Start_Idx[0]; i<End_Idx[0]; i++)   {  Cr[0] = i*PS2*scale;
+   for (int k=0; k<NPG_EachDim_C[2]; k++)   {  Cr[2] = (k+k0)*PS2*scale;
+   for (int j=0; j<NPG_EachDim_C[1]; j++)   {  Cr[1] = (j+j0)*PS2*scale;
+   for (int i=0; i<NPG_EachDim_C[0]; i++)   {  Cr[0] = (i+i0)*PS2*scale;
 
 #     ifdef LOAD_BALANCE
       const long LBIdx0 = LB_Corner2Index( lv, Cr, CHECK_ON );

@@ -57,11 +57,8 @@ void Init_ByFile()
 
    if ( MPI_Rank == 0 )    Aux_Message( stdout, "%s ...\n", __FUNCTION__ );
 
-
-   string UM_Filename = "UM_IC";
-   const long UM_Size3D[3]  = { NX0_TOT[0]*(1<<OPT__UM_IC_LEVEL),
-                                NX0_TOT[1]*(1<<OPT__UM_IC_LEVEL),
-                                NX0_TOT[2]*(1<<OPT__UM_IC_LEVEL) };
+   string UM_Filename_Base = "UM_IC";
+   const long UM_Size3D[3] = {256, 256, 256};
 
 // check
 #  if ( !defined SERIAL  &&  !defined LOAD_BALANCE )
@@ -79,6 +76,8 @@ void Init_ByFile()
       Aux_Error( ERROR_INFO, "file \"%s\" does not exist !!\n", UM_Filename );
 
 // check file size
+   //### this might have to be done within the loop
+   /*
    FILE *FileTemp = fopen( UM_Filename, "rb" );
 
    fseek( FileTemp, 0, SEEK_END );
@@ -91,6 +90,7 @@ void Init_ByFile()
    fclose( FileTemp );
 
    MPI_Barrier( MPI_COMM_WORLD );
+   */
 
 
 
@@ -172,16 +172,19 @@ void Init_ByFile()
 // 3. assign data on level OPT__UM_IC_LEVEL by the input file UM_IC
    //###
    for (int lv=OPT__UM_IC_LEVEL_MAX; lv>=OPT__UM_IC_LEVEL_MIN; lv--) {
+      // 3.1 filename for each level
       string lv_str  = std::to_string(lv);
-      UM_Filename_lv = UM_Filename + '_lv' + l_str;
+      UM_Filename_lv = UM_Filename_Base + '_lv' + l_str;
+      
+      // 3.2 assign data
       Init_ByFile_AssignData( UM_Filename_lv, lv, OPT__UM_IC_NVAR, OPT__UM_IC_LOAD_NRANK, OPT__UM_IC_FORMAT );
+      
+      // 3.3 get buffer data
+#     ifdef LOAD_BALANCE
+      Buf_GetBufferData( lv, amr->FluSg[lv], NULL_INT, DATA_GENERAL, _TOTAL,
+                         Flu_ParaBuf, USELB_YES );
+#     endif
    }
-   
-
-#  ifdef LOAD_BALANCE
-   Buf_GetBufferData( OPT__UM_IC_LEVEL, amr->FluSg[OPT__UM_IC_LEVEL], NULL_INT, DATA_GENERAL, _TOTAL,
-                      Flu_ParaBuf, USELB_YES );
-#  endif
 
 
 // 4. assign data on levels 0 ~ OPT__UM_IC_LEVEL-1 by data restriction
@@ -324,16 +327,12 @@ void Init_ByFile_AssignData( const string UM_Filename, const int UM_lv, const in
 
    if ( MPI_Rank == 0 )    Aux_Message( stdout, "   Loading data from the input file ...\n" );
 
-
 // check
    if ( Init_ByFile_User_Ptr == NULL )  Aux_Error( ERROR_INFO, "Init_ByFile_User_Ptr == NULL !!\n" );
+   
+   const int  UM_Size3D_Base[3] = { (NX0_TOT[0])*(1<<lv), (NX0_TOT[1])*(1<<lv), (NX0_TOT[2])*(1<<lv) };
+   const long UM_Size3D[3]      = {256, 256, 256};
 
-   //### set UM_Size3D[3] = {512, 512, 512}
-   const long UM_Size3D[3]    = {256, 256, 256};
-   const int  FileIdx_Offset  = 128; 
-   //const long   UM_Size3D[3] = { NX0_TOT[0]*(1<<UM_lv),
-   //                              NX0_TOT[1]*(1<<UM_lv),
-   //                              NX0_TOT[2]*(1<<UM_lv) };
    const long   UM_Size1v    =  UM_Size3D[0]*UM_Size3D[1]*UM_Size3D[2];
    const int    NVarPerLoad  = ( UM_Format == UM_IC_FORMAT_ZYXV ) ? UM_NVar : 1;
    const int    scale        = amr->scale[UM_lv];
@@ -344,6 +343,24 @@ void Init_ByFile_AssignData( const string UM_Filename, const int UM_lv, const in
    double x, y, z;
 
    real *PG_Data = new real [ CUBE(PS2)*UM_NVar ];
+   
+// check file size
+   FILE *FileTemp = fopen( UM_Filename, "rb" );
+
+   fseek( FileTemp, 0, SEEK_END );
+
+   const long ExpectSize = long(OPT__UM_IC_NVAR)*UM_Size3D[0]*UM_Size3D[1]*UM_Size3D[2]*sizeof(real);
+   const long FileSize   = ftell( FileTemp );
+   if ( FileSize != ExpectSize )
+      Aux_Error( ERROR_INFO, "size of the file <%s> (%ld) != expect (%ld) !!\n", UM_Filename, FileSize, ExpectSize );
+
+   fclose( FileTemp );
+
+   MPI_Barrier( MPI_COMM_WORLD );
+   
+   // calculate the starting index for the pyramid IC
+   int StartIdx_Offset[3];
+   for (int d=0; d<3; d++) StartIdx_Offset[d] = (UM_Size3D_Base[d] - UM_Size3D[d])/2 ;
 
 
 // load data with UM_LoadNRank ranks at a time
@@ -360,9 +377,10 @@ void Init_ByFile_AssignData( const string UM_Filename, const int UM_lv, const in
          for (int PID0=0; PID0<amr->NPatchComma[UM_lv][1]; PID0+=8)
          {
 //          calculate the file offset of the target patch group
-            for (int d=0; d<3; d++)    Offset3D_File0[d] = amr->patch[0][UM_lv][PID0]->corner[d] / scale;
-            // 
-            for (int d=0; d<3; d++)    Offset2D_File0[d] -= FileIdx_Offset ;
+            for (int d=0; d<3; d++) {
+               Offset3D_File0[d] =  amr->patch[0][UM_lv][PID0]->corner[d] / scale;
+               Offset3D_File0[d] -= StartIdx_Offset[d];
+            }    
 
             Offset_File0  = IDX321( Offset3D_File0[0], Offset3D_File0[1], Offset3D_File0[2], UM_Size3D[0], UM_Size3D[1] );
             Offset_File0 *= (long)NVarPerLoad*sizeof(real);
