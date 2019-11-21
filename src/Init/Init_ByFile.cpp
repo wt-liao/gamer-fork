@@ -2,6 +2,8 @@
 
 // include library for string manipulation
 #include <string>
+#include <sstream> // for crafting to_string()
+using std::string;
 
 // declare as static so that other functions cannot invoke it directly and must use the function pointer
 static void Init_ByFile_Default( real fluid_out[], const real fluid_in[], const int nvar_in,
@@ -15,6 +17,16 @@ void (*Init_ByFile_User_Ptr)( real fluid_out[], const real fluid_in[], const int
 
 static void Init_ByFile_AssignData( const char UM_Filename[], const int UM_lv, const int UM_NVar, const int UM_LoadNRank,
                                     const UM_IC_Format_t UM_Format );
+
+static string to_string( int input_int );
+
+// to_string function
+// a get away, since std::to_string() cannot be found on Blue Waters
+string to_string(int input_int) {
+   std::ostringstream os;
+   os << input_int;
+   return os.str();
+}
 
 
 
@@ -57,7 +69,8 @@ void Init_ByFile()
 
    if ( MPI_Rank == 0 )    Aux_Message( stdout, "%s ...\n", __FUNCTION__ );
 
-   string UM_Filename_Base = "UM_IC";
+   string UM_Filename_Base = "UM_IC_lv";
+   string UM_Filename_lv;
    const long UM_Size3D[3] = {256, 256, 256};
 
 // check
@@ -72,8 +85,8 @@ void Init_ByFile()
       Aux_Error( ERROR_INFO, "invalid OPT__UM_IC_NVAR = %d (accepeted range: %d ~ %d) !!\n",
                  OPT__UM_IC_NVAR, 1, NCOMP_TOTAL );
 
-   if ( !Aux_CheckFileExist(UM_Filename) )
-      Aux_Error( ERROR_INFO, "file \"%s\" does not exist !!\n", UM_Filename );
+   //if ( !Aux_CheckFileExist(UM_Filename) )
+   //   Aux_Error( ERROR_INFO, "file \"%s\" does not exist !!\n", UM_Filename );
 
 // check file size
    //### this might have to be done within the loop
@@ -173,11 +186,11 @@ void Init_ByFile()
    //###
    for (int lv=OPT__UM_IC_LEVEL_MAX; lv>=OPT__UM_IC_LEVEL_MIN; lv--) {
       // 3.1 filename for each level
-      string lv_str  = std::to_string(lv);
-      UM_Filename_lv = UM_Filename_Base + '_lv' + l_str;
+      string lv_str  = to_string(lv);
+      UM_Filename_lv = UM_Filename_Base + lv_str;
       
       // 3.2 assign data
-      Init_ByFile_AssignData( UM_Filename_lv, lv, OPT__UM_IC_NVAR, OPT__UM_IC_LOAD_NRANK, OPT__UM_IC_FORMAT );
+      Init_ByFile_AssignData( UM_Filename_lv.c_str(), lv, OPT__UM_IC_NVAR, OPT__UM_IC_LOAD_NRANK, OPT__UM_IC_FORMAT );
       
       // 3.3 get buffer data
 #     ifdef LOAD_BALANCE
@@ -321,16 +334,17 @@ void Init_ByFile()
 //
 // Return      :  amr->patch->fluid
 //-------------------------------------------------------------------------------------------------------
-void Init_ByFile_AssignData( const string UM_Filename, const int UM_lv, const int UM_NVar, const int UM_LoadNRank,
+void Init_ByFile_AssignData( const char UM_Filename[], const int UM_lv, const int UM_NVar, const int UM_LoadNRank,
                              const UM_IC_Format_t UM_Format )
 {
 
-   if ( MPI_Rank == 0 )    Aux_Message( stdout, "   Loading data from the input file ...\n" );
+   if ( MPI_Rank == 0 )    Aux_Message( stdout, "   Loading lv=%d data from the input file ...\n", UM_lv );
 
 // check
    if ( Init_ByFile_User_Ptr == NULL )  Aux_Error( ERROR_INFO, "Init_ByFile_User_Ptr == NULL !!\n" );
+   if ( !Aux_CheckFileExist(UM_Filename) ) Aux_Error( ERROR_INFO, "file \"%s\" does not exist !!\n", UM_Filename );
    
-   const int  UM_Size3D_Base[3] = { (NX0_TOT[0])*(1<<lv), (NX0_TOT[1])*(1<<lv), (NX0_TOT[2])*(1<<lv) };
+   const int  UM_Size3D_Base[3] = { (NX0_TOT[0])*(1<<UM_lv), (NX0_TOT[1])*(1<<UM_lv), (NX0_TOT[2])*(1<<UM_lv) };
    const long UM_Size3D[3]      = {256, 256, 256};
 
    const long   UM_Size1v    =  UM_Size3D[0]*UM_Size3D[1]*UM_Size3D[2];

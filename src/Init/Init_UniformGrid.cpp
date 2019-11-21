@@ -28,15 +28,15 @@
 void Init_UniformGrid( const int lv, const bool FindHomePatchForPar )
 {
 
-   const int NPG_EachDim[3]      = { (NX0_TOT[0]/PS2)*(1<<lv), (NX0_TOT[1]/PS2)*(1<<lv), (NX0_TOT[2]/PS2)*(1<<lv) };
+   const int NPG_EachDim[3]   = { (NX0_TOT[0]/PS2)*(1<<lv), (NX0_TOT[1]/PS2)*(1<<lv), (NX0_TOT[2]/PS2)*(1<<lv) };
    
-   if (lv >= OPT__UM_IC_LEVEL_MIN)
-      const int NPG_EachDim_C[3] = { (256/PS2), (256/PS2), (256/PS2) }; // NPG in the central pyramid region
-   else 
-      const int *NPG_EachDim_C   = *NPG_EachDim ;
+   int NPG_EachDim_C[3];
+   for (int d=0; d<3; d++) {
+      if (lv>=OPT__UM_IC_LEVEL_MIN) NPG_EachDim_C[d] = 256/PS2  ;
+      else                          NPG_EachDim_C[d] = NPG_EachDim[d];
+   }
    
-   const int scale               = amr->scale[lv];
-
+   const int scale            = amr->scale[lv];
    int Cr[3];
    
    const int i0 = (NPG_EachDim[0] - NPG_EachDim_C[0])/2;
