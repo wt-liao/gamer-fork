@@ -386,7 +386,7 @@ void Init_ByFile_AssignData( const char UM_Filename[], const int UM_lv, const in
                                                  TRank0, MIN(TRank0+UM_LoadNRank-1, MPI_NRank-1) );
 
          FILE *File = fopen( UM_Filename, "rb" );
-
+         
 //       load one patch group at a time
          for (int PID0=0; PID0<amr->NPatchComma[UM_lv][1]; PID0+=8)
          {
@@ -394,15 +394,15 @@ void Init_ByFile_AssignData( const char UM_Filename[], const int UM_lv, const in
             for (int d=0; d<3; d++) {
                Offset3D_File0[d] =  amr->patch[0][UM_lv][PID0]->corner[d] / scale;
                Offset3D_File0[d] -= StartIdx_Offset[d];
-            }    
-
+            }
+           
             Offset_File0  = IDX321( Offset3D_File0[0], Offset3D_File0[1], Offset3D_File0[2], UM_Size3D[0], UM_Size3D[1] );
             Offset_File0 *= (long)NVarPerLoad*sizeof(real);
 
 
 //          load data from the disk (one row at a time)
             Offset_PG = 0;
-
+            
             for (int v=0; v<UM_NVar; v+=NVarPerLoad )
             {
                for (int k=0; k<PS2; k++)
@@ -415,7 +415,12 @@ void Init_ByFile_AssignData( const char UM_Filename[], const int UM_lv, const in
                   fread( PG_Data+Offset_PG, sizeof(real), NVarPerLoad*PS2, File );
 
 //                verify that the file size is not exceeded
-                  if ( feof(File) )   Aux_Error( ERROR_INFO, "reaching the end of the file \"%s\" !!\n", UM_Filename );
+                  //if ( feof(File) )   Aux_Error( ERROR_INFO, "reaching the end of the file \"%s\" !!\n", UM_Filename );
+                  if ( feof(File) ) {
+                     Aux_Message(stdout, "Offset_File=%d; Offset_File0=%d. (v,j,k)=(%d,%d,%d).", 
+                                 Offset_File, Offset_File0,v,j,k);
+                     Aux_Error( ERROR_INFO, "reaching the end of the file \"%s\" !!\n", UM_Filename );
+                  }
 
                   Offset_PG += NVarPerLoad*PS2;
                }
@@ -537,7 +542,7 @@ void Init_ByFile_Default( real fluid_out[], const real fluid_in[], const int nva
 // calculate the dual-energy field for HYDRO/MHD
 #  if ( MODEL == HYDRO  ||  MODEL == MHD )
 #  if   ( DUAL_ENERGY == DE_ENPY )
-   fluid_out[ENPY] = Hydro_Fluid2Entropy( fluid_in[DENS], fluid_in[MOMX], fluid_in[MOMY], fluid_in[MOMZ], fluid_in[ENGY], GAMMA-1.0 );
+   //fluid_out[ENPY] = Hydro_Fluid2Entropy( fluid_in[DENS], fluid_in[MOMX], fluid_in[MOMY], fluid_in[MOMZ], fluid_in[ENGY], GAMMA-1.0 );
 #  elif ( DUAL_ENERGY == DE_EINT )
 #  error : DE_EINT is NOT supported yet !!
 #  endif
