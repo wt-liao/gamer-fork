@@ -17,6 +17,8 @@ void Init_TestProb_Hydro_CollidingJets();
 void Init_TestProb_Hydro_Plummer();
 void Init_TestProb_Hydro_Gravity();
 
+void Init_TestProb_Hydro_PopIII_Sobolev();
+
 void Init_TestProb_ELBDM_ExtPot();
 
 
@@ -55,6 +57,8 @@ void Init_TestProb()
       case TESTPROB_HYDRO_COLLIDING_JETS :               Init_TestProb_Hydro_CollidingJets();               break;
       case TESTPROB_HYDRO_PLUMMER :                      Init_TestProb_Hydro_Plummer();                     break;
       case TESTPROB_HYDRO_GRAVITY :                      Init_TestProb_Hydro_Gravity();                     break;
+      
+      case TESTPROB_HYDRO_POPIII_SOBOLEV :               Init_TestProb_Hydro_PopIII_Sobolev();              break;
 
       case TESTPROB_ELBDM_EXTPOT :                       Init_TestProb_ELBDM_ExtPot();                      break;
 
