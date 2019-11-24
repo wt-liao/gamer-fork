@@ -22,6 +22,10 @@ int CheIdx_H2II  = Idx_Undefined;
 int CheIdx_DI    = Idx_Undefined;
 int CheIdx_DII   = Idx_Undefined;
 int CheIdx_HDI   = Idx_Undefined;
+int CheIdx_H3II  = Idx_Undefined;
+int CheIdx_LiI   = Idx_Undefined;
+int CheIdx_LiII  = Idx_Undefined;
+int CheIdx_LiH   = Idx_Undefined;
 int CheIdx_Metal = Idx_Undefined;
 
 
@@ -71,6 +75,16 @@ void Init_MemAllocate_Grackle( const int Che_NPG )
    CheIdx_DI    = Che_NField ++;
    CheIdx_DII   = Che_NField ++;
    CheIdx_HDI   = Che_NField ++;
+   }
+   
+   if ( GRACKLE_PRIMORDIAL >= GRACKLE_PRI_CHE_NSPE13 ) {
+   CheIdx_H3II  = Che_NField ++;
+   }
+   
+   if ( GRACKLE_PRIMORDIAL >= GRACKLE_PRI_CHE_LI     ) {
+   CheIdx_LiI   = Che_NField ++;
+   CheIdx_LiII  = Che_NField ++;
+   CheIdx_LiH   = Che_NField ++;
    }
 
    if ( GRACKLE_METAL )

@@ -346,6 +346,8 @@ const GracklePriChe_t
    GRACKLE_PRI_CHE_NSPE6  = 1,
    GRACKLE_PRI_CHE_NSPE9  = 2,
    GRACKLE_PRI_CHE_NSPE12 = 3;
+   GRACKLE_PRI_CHE_NSPE13 = 4;
+   GRACKLE_PRI_CHE_LI     = 5;
 #endif
 
 

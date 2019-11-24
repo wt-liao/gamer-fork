@@ -21,6 +21,10 @@ extern int CheIdx_H2II;
 extern int CheIdx_DI;
 extern int CheIdx_DII;
 extern int CheIdx_HDI;
+extern int CheIdx_H3II;
+extern int CheIdx_LiI;
+extern int CheIdx_LiII;
+extern int CheIdx_LiH;
 extern int CheIdx_Metal;
 
 
@@ -68,6 +72,10 @@ void Grackle_Close( const int lv, const int SaveSg, const real h_Che_Array[], co
    const real *Ptr_DI0    = h_Che_Array + CheIdx_DI   *Size1v;
    const real *Ptr_DII0   = h_Che_Array + CheIdx_DII  *Size1v;
    const real *Ptr_HDI0   = h_Che_Array + CheIdx_HDI  *Size1v;
+   const real *Ptr_H3II0  = h_Che_Array + CheIdx_H3II *Size1v; //
+   const real *Ptr_LiI0   = h_Che_Array + CheIdx_LiI  *Size1v;
+   const real *Ptr_LiII0  = h_Che_Array + CheIdx_LiII *Size1v;
+   const real *Ptr_LiH0   = h_Che_Array + CheIdx_LiH  *Size1v; //
 
 
 #  pragma omp parallel
@@ -81,6 +89,7 @@ void Grackle_Close( const int lv, const int SaveSg, const real h_Che_Array[], co
    const real *Ptr_Dens=NULL, *Ptr_sEint=NULL, *Ptr_Ek=NULL, *Ptr_e=NULL, *Ptr_HI=NULL, *Ptr_HII=NULL;
    const real *Ptr_HeI=NULL, *Ptr_HeII=NULL, *Ptr_HeIII=NULL, *Ptr_HM=NULL, *Ptr_H2I=NULL, *Ptr_H2II=NULL;
    const real *Ptr_DI=NULL, *Ptr_DII=NULL, *Ptr_HDI=NULL;
+   const real *Ptr_H3II=NULL, *Ptr_LiI=NULL, *Ptr_LiII=NULL, *Ptr_LiH=NULL;
 
 #  pragma omp for schedule( static )
    for (int TID=0; TID<NPG; TID++)
@@ -104,6 +113,10 @@ void Grackle_Close( const int lv, const int SaveSg, const real h_Che_Array[], co
       Ptr_DI    = Ptr_DI0    + offset;
       Ptr_DII   = Ptr_DII0   + offset;
       Ptr_HDI   = Ptr_HDI0   + offset;
+      Ptr_H3II  = Ptr_H3II0  + offset;
+      Ptr_LiI   = Ptr_LiI0   + offset;
+      Ptr_LiII  = Ptr_LiII0  + offset;
+      Ptr_LiH   = Ptr_LiH0   + offset;
 
       for (int LocalID=0; LocalID<8; LocalID++)
       {
@@ -153,6 +166,19 @@ void Grackle_Close( const int lv, const int SaveSg, const real h_Che_Array[], co
             *( fluid[Idx_DII  ][0][0] + idx_p ) = Ptr_DII  [idx_pg];
             *( fluid[Idx_HDI  ][0][0] + idx_p ) = Ptr_HDI  [idx_pg];
             }
+            
+//          13-species network
+            if ( GRACKLE_PRIMORDIAL >= GRACKLE_PRI_CHE_NSPE13 ) {
+            *( fluid[Idx_H3II ][0][0] + idx_p ) = Ptr_H3II [idx_pg];
+            }
+            
+//          Li network
+            if ( GRACKLE_PRIMORDIAL >= GRACKLE_PRI_CHE_LI     ) {
+            *( fluid[Idx_LiI  ][0][0] + idx_p ) = Ptr_LiI  [idx_pg];
+            *( fluid[Idx_LiII ][0][0] + idx_p ) = Ptr_LiII [idx_pg];
+            *( fluid[Idx_LiH  ][0][0] + idx_p ) = Ptr_LiH  [idx_pg];
+            }
+            
 
             idx_pg ++;
          } // for (int idx_p=0; idx_p<CUBE(PS1); idx_p++)

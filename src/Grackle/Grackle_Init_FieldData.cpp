@@ -63,12 +63,19 @@ void Grackle_Init_FieldData()
    Che_FieldData->DI_density              = NULL;
    Che_FieldData->DII_density             = NULL;
    Che_FieldData->HDI_density             = NULL;
+   Che_FieldData->H3II_density            = NULL;
+   Che_FieldData->LiI_density             = NULL;
+   Che_FieldData->LiII_density            = NULL;
+   Che_FieldData->LiH_density             = NULL;
    Che_FieldData->metal_density           = NULL;
+   
+   
 
 // fields not supported yet
    Che_FieldData->x_velocity              = NULL;
    Che_FieldData->y_velocity              = NULL;
    Che_FieldData->z_velocity              = NULL;
+   Che_FieldData->velocity_gradient       = NULL;
    Che_FieldData->volumetric_heating_rate = NULL;
    Che_FieldData->specific_heating_rate   = NULL;
    Che_FieldData->RT_HI_ionization_rate   = NULL;
@@ -76,6 +83,7 @@ void Grackle_Init_FieldData()
    Che_FieldData->RT_HeII_ionization_rate = NULL;
    Che_FieldData->RT_H2_dissociation_rate = NULL;
    Che_FieldData->RT_heating_rate         = NULL;
+   Che_FieldData->H2_self_shielding_length= NULL;
 
 } // FUNCTION : Grackle_Init_FieldData
 
