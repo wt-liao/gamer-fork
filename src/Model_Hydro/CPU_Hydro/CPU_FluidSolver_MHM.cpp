@@ -169,7 +169,7 @@ void CUFLU_FluidSolver_MHM(
    const double Time, const OptGravityType_t GravityType,
    const real MinDens, const real MinPres, const real DualEnergySwitch,
    const bool NormPassive, const int NNorm,
-   const bool JeansMinPres, const real JeansMinPres_Coeff, const real Unit_Dens )
+   const bool JeansMinPres, const real JeansMinPres_Coeff )
 #else
 void CPU_FluidSolver_MHM(
    const real   g_Flu_Array_In [][NCOMP_TOTAL][ CUBE(FLU_NXT) ],
@@ -187,7 +187,9 @@ void CPU_FluidSolver_MHM(
    const double Time, const OptGravityType_t GravityType,
    const double c_ExtAcc_AuxArray[], const real MinDens, const real MinPres,
    const real DualEnergySwitch, const bool NormPassive, const int NNorm, const int c_NormIdx[],
-   const bool JeansMinPres, const real JeansMinPres_Coeff, const real Unit_Dens )
+   const bool JeansMinPres, const real JeansMinPres_Coeff, 
+   const double H2_Op_T_Table[], const double H2_Op_Alpha_Table[], 
+   const int H2_Op_N_elem, const real Unit_Dens )
 #endif // #ifdef __CUDACC__ ... else ...
 {
 

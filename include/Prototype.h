@@ -78,7 +78,9 @@ void CPU_FluidSolver( real h_Flu_Array_In[][FLU_NIN][ CUBE(FLU_NXT) ],
                       const double Time, const OptGravityType_t GravityType,
                       const real MinDens, const real MinPres, const real DualEnergySwitch,
                       const bool NormPassive, const int NNorm, const int NormIdx[],
-                      const bool JeansMinPres, const real JeansMinPres_Coeff );
+                      const bool JeansMinPres, const real JeansMinPres_Coeff,
+                      const double H2_Op_T_Table[], const double H2_Op_Alpha_Table[], 
+                      const int H2_Op_N_elem, const real Unit_Dens );
 real Hydro_GetPressure( const real Dens, const real MomX, const real MomY, const real MomZ, const real Engy,
                         const real Gamma_m1, const bool CheckMinPres, const real MinPres );
 real Hydro_GetTemperature( const real Dens, const real MomX, const real MomY, const real MomZ, const real Engy,
