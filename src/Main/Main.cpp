@@ -178,7 +178,14 @@ int                  GRACKLE_THREE_BODY_RATE;
 int                  GRACKLE_CIE_COOLING;
 int                  GRACKLE_H2_OPA_APPROX;
 int                  CHE_GPU_NPGROUP;
+
+#ifdef GRACKLE_H2_SOBOLEV
+double              *H2_Op_T_Table     = NULL ;
+double              *H2_Op_Alpha_Table = NULL ; 
+double               H2_Op_N_elem      = 500  ;
 #endif
+
+#endif // SUPPORT_GRACKLE
 
 // (2-8) star formation
 #ifdef STAR_FORMATION
