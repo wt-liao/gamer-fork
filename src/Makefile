@@ -141,11 +141,12 @@ endif # PARTICLE
 # ------------------------------------------------------------------------------------
 # maximum number of AMR levels including the root level (level id = 0 ... NLEVEL-1)
 # --> must be set in any cases
-SIMU_OPTION += -DNLEVEL=10
+SIMU_OPTION += -DNLEVEL=16
 
 # maximum number of patches on each AMR level
 # --> must be set in any cases
-SIMU_OPTION += -DMAX_PATCH=1000000
+# 256^3 = 32768
+SIMU_OPTION += -DMAX_PATCH=1500000
 
 # GPU acceleration
 # --> must set GPU_ARCH as well
@@ -219,6 +220,8 @@ SIMU_OPTION += -DRANDOM_NUMBER=RNG_GNU_EXT
 ##CXXFLAG     = -g -fast
   CXXFLAG    += -w1                                       # warning flags
   CXXFLAG    += -dynamic                                  # for grackle linking on BW
+##CXXFLAG     = -g -O3 -std=c++11 #-gxx-name=YOUR_G++
+##CXXFLAG     = -g -fast
   OPENMPFLAG  = -fopenmp                                  # openmp flag
   LIB         = -limf                                     # libraries and linker flags
 #
@@ -230,7 +233,7 @@ SIMU_OPTION += -DRANDOM_NUMBER=RNG_GNU_EXT
 #
 ## suppress warning when OpenMP is disabled
 ifeq "$(filter -DOPENMP, $(SIMU_OPTION))" ""
-  CXXFLAG    += -Wno-unknown-pragmas -diag-disable 3180
+ CXXFLAG    += -Wno-unknown-pragmas -diag-disable 3180
 endif
 
 

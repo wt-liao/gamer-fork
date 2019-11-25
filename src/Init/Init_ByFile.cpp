@@ -191,9 +191,10 @@ void Init_ByFile()
       
       // 3.2 assign data
       Init_ByFile_AssignData( UM_Filename_lv.c_str(), lv, OPT__UM_IC_NVAR, OPT__UM_IC_LOAD_NRANK, OPT__UM_IC_FORMAT );
-      
+ 
       // 3.3 get buffer data
 #     ifdef LOAD_BALANCE
+      MPI_Barrier( MPI_COMM_WORLD );
       Buf_GetBufferData( lv, amr->FluSg[lv], NULL_INT, DATA_GENERAL, _TOTAL,
                          Flu_ParaBuf, USELB_YES );
 #     endif
@@ -239,7 +240,7 @@ void Init_ByFile()
 #  endif
 
    if ( OPT__UM_IC_DOWNGRADE )
-   for (int lv=OPT__UM_IC_LEVEL-1; lv>=0; lv--)
+   for (int lv=OPT__UM_IC_LEVEL_MAX-1; lv>=0; lv--)
    {
       if ( MPI_Rank == 0 )    Aux_Message( stdout, "   Downgrading level %d ... ", lv+1 );
 
@@ -263,7 +264,7 @@ void Init_ByFile()
 
 // 7. refine the uniform-mesh data from levels OPT__UM_IC_LEVEL to MAX_LEVEL-1
    if ( OPT__UM_IC_REFINE )
-   for (int lv=OPT__UM_IC_LEVEL; lv<MAX_LEVEL; lv++)
+   for (int lv=OPT__UM_IC_LEVEL_MIN; lv<MAX_LEVEL; lv++)
    {
       if ( MPI_Rank == 0 )    Aux_Message( stdout, "   Refining level %d ... ", lv );
 
@@ -526,9 +527,9 @@ void Init_ByFile_Default( real fluid_out[], const real fluid_in[], const int nva
 //    skip the dual-energy field for HYDRO/MHD
 #     if ( MODEL == HYDRO  ||  MODEL == MHD )
 #     if   ( DUAL_ENERGY == DE_ENPY )
-      if ( v_out == ENPY )    v_out ++;
+      //if ( v_out == ENPY )    v_out ++;
 #     elif ( DUAL_ENERGY == DE_EINT )
-      if ( v_out == EINT )    v_out ++;
+      //if ( v_out == EINT )    v_out ++;
 #     endif
 
 //    skip the density field for ELBDM
