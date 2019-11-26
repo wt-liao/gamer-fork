@@ -203,7 +203,7 @@ extern int             CHE_GPU_NPGROUP;
 
 #ifdef GRACKLE_H2_SOBOLEV
 extern double         *H2_Op_T_Table, *H2_Op_Alpha_Table ;
-extern double          H2_Op_N_elem;
+extern int             H2_Op_N_elem;
 #endif
 #endif // SUPPORT_GRACKLE
 
