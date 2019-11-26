@@ -465,7 +465,7 @@ void Solver( const Solver_t TSolver, const int lv, const double TimeNew, const d
    const real JeansMinPres_Coeff = NULL_REAL;
 #  endif
    
-#  if defined (defined SUPPORT_GRACKLE) && (defined GRACKLE_H2_SOBOLEV)
+#  if (defined SUPPORT_GRACKLE) && (defined GRACKLE_H2_SOBOLEV)
    const double Unit_Dens          = Che_Units.density_units;
 #  else
    const double Unit_Dens          = NULL_REAL;

@@ -33,9 +33,9 @@ void Grackle_Init_Alpha_Table(){
    Alpha_Table = fopen( "H2_Op_Alpha", "rb" );
    
    if (T_Table == NULL)
-      Aux_error(ERROR_INFO, "ERROR: cannot find <H2_Op_T>: H2 Opacity T-table . \n");
+      Aux_Error(ERROR_INFO, "ERROR: cannot find <H2_Op_T>: H2 Opacity T-table . \n");
    if (Alpha_Table == NULL)
-      Aux_error(ERROR_INFO, "ERROR: cannot find <H2_Op_Alpha>: H2 Opacity Alpha-table. \n");
+      Aux_Error(ERROR_INFO, "ERROR: cannot find <H2_Op_Alpha>: H2 Opacity Alpha-table. \n");
    
    
    // 2.0 find the size of the array -> N of eletments 
@@ -48,10 +48,10 @@ void Grackle_Init_Alpha_Table(){
    const int N_elem = int( Table_T_Size/sizeof(double) ); 
    
    if (H2_Op_N_elem != N_elem)
-      Aux_error(ERROR_INFO, "Element in H2 Table should be %d, but is %d. \n", H2_Op_N_elem, N_elem);
+      Aux_Error(ERROR_INFO, "Element in H2 Table should be %d, but is %d. \n", H2_Op_N_elem, N_elem);
    
    if (Table_T_Size != Table_Alpha_Size)
-      Aux_error(ERROR_INFO, "Error in H2 Opacity: size of T-table=%d and Alpha-table=%d. \n ", 
+      Aux_Error(ERROR_INFO, "Error in H2 Opacity: size of T-table=%d and Alpha-table=%d. \n ", 
                 Table_T_Size, Table_Alpha_Size) ;
 
    if (MPI_Rank == 0)
