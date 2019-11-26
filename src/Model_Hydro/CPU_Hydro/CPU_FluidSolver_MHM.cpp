@@ -294,7 +294,7 @@ void CPU_FluidSolver_MHM(
                                g_FC_Flux_1PG, dt, dh, Gamma, MinDens, MinPres, DualEnergySwitch,
                                NormPassive, NNorm, c_NormIdx );
                                
-#        if ( FLU_SCHEME == MHM_RP ) && defined (defined SUPPORT_GRACKLE) && (defined GRACKLE_H2_SOBOLEV)
+#        if ( FLU_SCHEME == MHM_RP ) && (defined SUPPORT_GRACKLE) && (defined GRACKLE_H2_SOBOLEV)
          Hydro_H2_Opacity(g_Half_Var_1PG, g_Flu_Array_Out[P], H2_Op_T_Table, H2_Op_Alpha_Table, 
                           H2_Op_N_elem, dh, Gamma, Unit_Dens);
 #        endif 
@@ -522,6 +522,11 @@ void Hydro_H2_Opacity(const real g_Half_PriVar[][ CUBE(FLU_NXT) ], real g_Output
    const double m_H           = (real)1.672621898e-24;
    const double m_e           = (real)9.10938356e-28;
    const double mass_ratio_ep = m_e / m_H ;
+   const double _m_H          = (real)1.0/m_H;
+   const double _m_2H         = _m_H / (real)2.0;
+   const double _m_4H         = _m_H / (real)4.0;
+   const double _m_e          = (real)1.0/m_e;
+
    const double _2dh          = (real)0.5/dh ;
    const double Gamma_m1      = Gamma - (real)1.0;
    const double _Gamma_m1     = (real)1.0 / Gamma_m1; 
