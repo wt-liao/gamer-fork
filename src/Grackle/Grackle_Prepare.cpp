@@ -191,7 +191,7 @@ void Grackle_Prepare( const int lv, real h_Che_Array[], const int NPG, const int
 
 //          6-species network
             if ( GRACKLE_PRIMORDIAL >= GRACKLE_PRI_CHE_NSPE6 ) {
-            Ptr_e    [idx_pg] = *( fluid[Idx_e    ][0][0] + idx_p ) * mass_ratio_pe;
+            Ptr_e    [idx_pg] = *( fluid[Idx_e    ][0][0] + idx_p );// * mass_ratio_pe;
             Ptr_HI   [idx_pg] = *( fluid[Idx_HI   ][0][0] + idx_p );
             Ptr_HII  [idx_pg] = *( fluid[Idx_HII  ][0][0] + idx_p );
             Ptr_HeI  [idx_pg] = *( fluid[Idx_HeI  ][0][0] + idx_p );
