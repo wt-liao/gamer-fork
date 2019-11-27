@@ -251,7 +251,12 @@ void Flu_FixUp( const int lv )
 
 
 //                store the corrected results
-                  for (int v=0; v<NFLUX_TOTAL; v++)   *FluidPtr1D[v] = CorrVal[v];
+                  for (int v=0; v<NFLUX_TOTAL; v++) {
+#                 if (defined SUPPORT_GRACKLE) && (defined GRACKLE_H2_SOBOLEV)
+                  if ( (v!=Idx_alpha) && (v!=Idx_OpTauX) && (v!=Idx_OpTauY) && (v!=Idx_OpTauZ) )
+#                 endif
+                     *FluidPtr1D[v] = CorrVal[v];
+                  }
 
 
 //                rescale the real and imaginary parts to be consistent with the corrected amplitude
