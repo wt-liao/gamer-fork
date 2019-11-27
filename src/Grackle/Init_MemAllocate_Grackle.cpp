@@ -75,6 +75,12 @@ void Init_MemAllocate_Grackle( const int Che_NPG )
 
    if ( GRACKLE_METAL )
    CheIdx_Metal = Che_NField ++;
+   
+#  ifdef GRACKLE_H2_SOBOLEV
+   CheIdx_H2_TauX = Che_NField ++; 
+   CheIdx_H2_TauY = Che_NField ++; 
+   CheIdx_H2_TauZ = Che_NField ++; 
+#  endif
 
 
 // allocate the input/output array for the Grackle solver
