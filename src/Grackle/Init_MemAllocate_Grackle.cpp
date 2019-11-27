@@ -24,7 +24,11 @@ int CheIdx_DII   = Idx_Undefined;
 int CheIdx_HDI   = Idx_Undefined;
 int CheIdx_Metal = Idx_Undefined;
 
-
+#ifdef GRACKLE_H2_SOBOLEV
+int CheIdx_H2_TauX = Idx_Undefined;
+int CheIdx_H2_TauY = Idx_Undefined;
+int CheIdx_H2_TauZ = Idx_Undefined;
+#endif 
 
 
 //-------------------------------------------------------------------------------------------------------
