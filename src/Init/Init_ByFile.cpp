@@ -1,5 +1,10 @@
 #include "GAMER.h"
 
+// include library for string manipulation
+#include <string>
+#include <sstream> // for crafting to_string()
+using std::string;
+
 // declare as static so that other functions cannot invoke it directly and must use the function pointer
 static void Init_ByFile_Default( real fluid_out[], const real fluid_in[], const int nvar_in,
                                  const double x, const double y, const double z, const double Time,
@@ -12,6 +17,16 @@ void (*Init_ByFile_User_Ptr)( real fluid_out[], const real fluid_in[], const int
 
 static void Init_ByFile_AssignData( const char UM_Filename[], const int UM_lv, const int UM_NVar, const int UM_LoadNRank,
                                     const UM_IC_Format_t UM_Format );
+
+static string to_string( int input_int );
+
+// to_string function
+// a get away, since std::to_string() cannot be found on Blue Waters
+string to_string(int input_int) {
+   std::ostringstream os;
+   os << input_int;
+   return os.str();
+}
 
 
 
@@ -54,11 +69,9 @@ void Init_ByFile()
 
    if ( MPI_Rank == 0 )    Aux_Message( stdout, "%s ...\n", __FUNCTION__ );
 
-
-   const char UM_Filename[] = "UM_IC";
-   const long UM_Size3D[3]  = { NX0_TOT[0]*(1<<OPT__UM_IC_LEVEL),
-                                NX0_TOT[1]*(1<<OPT__UM_IC_LEVEL),
-                                NX0_TOT[2]*(1<<OPT__UM_IC_LEVEL) };
+   string UM_Filename_Base = "UM_IC_lv";
+   string UM_Filename_lv;
+   const long UM_Size3D[3] = {256, 256, 256};
 
 // check
 #  if ( !defined SERIAL  &&  !defined LOAD_BALANCE )
@@ -72,10 +85,12 @@ void Init_ByFile()
       Aux_Error( ERROR_INFO, "invalid OPT__UM_IC_NVAR = %d (accepeted range: %d ~ %d) !!\n",
                  OPT__UM_IC_NVAR, 1, NCOMP_TOTAL );
 
-   if ( !Aux_CheckFileExist(UM_Filename) )
-      Aux_Error( ERROR_INFO, "file \"%s\" does not exist !!\n", UM_Filename );
+   //if ( !Aux_CheckFileExist(UM_Filename) )
+   //   Aux_Error( ERROR_INFO, "file \"%s\" does not exist !!\n", UM_Filename );
 
 // check file size
+   //### this might have to be done within the loop
+   /*
    FILE *FileTemp = fopen( UM_Filename, "rb" );
 
    fseek( FileTemp, 0, SEEK_END );
@@ -88,6 +103,7 @@ void Init_ByFile()
    fclose( FileTemp );
 
    MPI_Barrier( MPI_COMM_WORLD );
+   */
 
 
 
@@ -167,12 +183,22 @@ void Init_ByFile()
 
 
 // 3. assign data on level OPT__UM_IC_LEVEL by the input file UM_IC
-   Init_ByFile_AssignData( UM_Filename, OPT__UM_IC_LEVEL, OPT__UM_IC_NVAR, OPT__UM_IC_LOAD_NRANK, OPT__UM_IC_FORMAT );
-
-#  ifdef LOAD_BALANCE
-   Buf_GetBufferData( OPT__UM_IC_LEVEL, amr->FluSg[OPT__UM_IC_LEVEL], NULL_INT, DATA_GENERAL, _TOTAL,
-                      Flu_ParaBuf, USELB_YES );
-#  endif
+   //###
+   for (int lv=OPT__UM_IC_LEVEL_MAX; lv>=OPT__UM_IC_LEVEL_MIN; lv--) {
+      // 3.1 filename for each level
+      string lv_str  = to_string(lv);
+      UM_Filename_lv = UM_Filename_Base + lv_str;
+      
+      // 3.2 assign data
+      Init_ByFile_AssignData( UM_Filename_lv.c_str(), lv, OPT__UM_IC_NVAR, OPT__UM_IC_LOAD_NRANK, OPT__UM_IC_FORMAT );
+ 
+      // 3.3 get buffer data
+#     ifdef LOAD_BALANCE
+      MPI_Barrier( MPI_COMM_WORLD );
+      Buf_GetBufferData( lv, amr->FluSg[lv], NULL_INT, DATA_GENERAL, _TOTAL,
+                         Flu_ParaBuf, USELB_YES );
+#     endif
+   }
 
 
 // 4. assign data on levels 0 ~ OPT__UM_IC_LEVEL-1 by data restriction
@@ -214,7 +240,7 @@ void Init_ByFile()
 #  endif
 
    if ( OPT__UM_IC_DOWNGRADE )
-   for (int lv=OPT__UM_IC_LEVEL-1; lv>=0; lv--)
+   for (int lv=OPT__UM_IC_LEVEL_MAX-1; lv>=0; lv--)
    {
       if ( MPI_Rank == 0 )    Aux_Message( stdout, "   Downgrading level %d ... ", lv+1 );
 
@@ -238,7 +264,7 @@ void Init_ByFile()
 
 // 7. refine the uniform-mesh data from levels OPT__UM_IC_LEVEL to MAX_LEVEL-1
    if ( OPT__UM_IC_REFINE )
-   for (int lv=OPT__UM_IC_LEVEL; lv<MAX_LEVEL; lv++)
+   for (int lv=OPT__UM_IC_LEVEL_MIN; lv<MAX_LEVEL; lv++)
    {
       if ( MPI_Rank == 0 )    Aux_Message( stdout, "   Refining level %d ... ", lv );
 
@@ -313,16 +339,15 @@ void Init_ByFile_AssignData( const char UM_Filename[], const int UM_lv, const in
                              const UM_IC_Format_t UM_Format )
 {
 
-   if ( MPI_Rank == 0 )    Aux_Message( stdout, "   Loading data from the input file ...\n" );
-
+   if ( MPI_Rank == 0 )    Aux_Message( stdout, "   Loading lv=%d data from the input file ...\n", UM_lv );
 
 // check
    if ( Init_ByFile_User_Ptr == NULL )  Aux_Error( ERROR_INFO, "Init_ByFile_User_Ptr == NULL !!\n" );
+   if ( !Aux_CheckFileExist(UM_Filename) ) Aux_Error( ERROR_INFO, "file \"%s\" does not exist !!\n", UM_Filename );
+   
+   const int  UM_Size3D_Base[3] = { (NX0_TOT[0])*(1<<UM_lv), (NX0_TOT[1])*(1<<UM_lv), (NX0_TOT[2])*(1<<UM_lv) };
+   const long UM_Size3D[3]      = {256, 256, 256};
 
-
-   const long   UM_Size3D[3] = { NX0_TOT[0]*(1<<UM_lv),
-                                 NX0_TOT[1]*(1<<UM_lv),
-                                 NX0_TOT[2]*(1<<UM_lv) };
    const long   UM_Size1v    =  UM_Size3D[0]*UM_Size3D[1]*UM_Size3D[2];
    const int    NVarPerLoad  = ( UM_Format == UM_IC_FORMAT_ZYXV ) ? UM_NVar : 1;
    const int    scale        = amr->scale[UM_lv];
@@ -333,6 +358,24 @@ void Init_ByFile_AssignData( const char UM_Filename[], const int UM_lv, const in
    double x, y, z;
 
    real *PG_Data = new real [ CUBE(PS2)*UM_NVar ];
+   
+// check file size
+   FILE *FileTemp = fopen( UM_Filename, "rb" );
+
+   fseek( FileTemp, 0, SEEK_END );
+
+   const long ExpectSize = long(OPT__UM_IC_NVAR)*UM_Size3D[0]*UM_Size3D[1]*UM_Size3D[2]*sizeof(real);
+   const long FileSize   = ftell( FileTemp );
+   if ( FileSize != ExpectSize )
+      Aux_Error( ERROR_INFO, "size of the file <%s> (%ld) != expect (%ld) !!\n", UM_Filename, FileSize, ExpectSize );
+
+   fclose( FileTemp );
+
+   MPI_Barrier( MPI_COMM_WORLD );
+   
+   // calculate the starting index for the pyramid IC
+   int StartIdx_Offset[3];
+   for (int d=0; d<3; d++) StartIdx_Offset[d] = (UM_Size3D_Base[d] - UM_Size3D[d])/2 ;
 
 
 // load data with UM_LoadNRank ranks at a time
@@ -344,20 +387,23 @@ void Init_ByFile_AssignData( const char UM_Filename[], const int UM_lv, const in
                                                  TRank0, MIN(TRank0+UM_LoadNRank-1, MPI_NRank-1) );
 
          FILE *File = fopen( UM_Filename, "rb" );
-
+         
 //       load one patch group at a time
          for (int PID0=0; PID0<amr->NPatchComma[UM_lv][1]; PID0+=8)
          {
 //          calculate the file offset of the target patch group
-            for (int d=0; d<3; d++)    Offset3D_File0[d] = amr->patch[0][UM_lv][PID0]->corner[d] / scale;
-
+            for (int d=0; d<3; d++) {
+               Offset3D_File0[d] =  amr->patch[0][UM_lv][PID0]->corner[d] / scale;
+               Offset3D_File0[d] -= StartIdx_Offset[d];
+            }
+           
             Offset_File0  = IDX321( Offset3D_File0[0], Offset3D_File0[1], Offset3D_File0[2], UM_Size3D[0], UM_Size3D[1] );
             Offset_File0 *= (long)NVarPerLoad*sizeof(real);
 
 
 //          load data from the disk (one row at a time)
             Offset_PG = 0;
-
+            
             for (int v=0; v<UM_NVar; v+=NVarPerLoad )
             {
                for (int k=0; k<PS2; k++)
@@ -370,7 +416,12 @@ void Init_ByFile_AssignData( const char UM_Filename[], const int UM_lv, const in
                   fread( PG_Data+Offset_PG, sizeof(real), NVarPerLoad*PS2, File );
 
 //                verify that the file size is not exceeded
-                  if ( feof(File) )   Aux_Error( ERROR_INFO, "reaching the end of the file \"%s\" !!\n", UM_Filename );
+                  //if ( feof(File) )   Aux_Error( ERROR_INFO, "reaching the end of the file \"%s\" !!\n", UM_Filename );
+                  if ( feof(File) ) {
+                     Aux_Message(stdout, "Offset_File=%d; Offset_File0=%d. (v,j,k)=(%d,%d,%d).", 
+                                 Offset_File, Offset_File0,v,j,k);
+                     Aux_Error( ERROR_INFO, "reaching the end of the file \"%s\" !!\n", UM_Filename );
+                  }
 
                   Offset_PG += NVarPerLoad*PS2;
                }
@@ -476,9 +527,9 @@ void Init_ByFile_Default( real fluid_out[], const real fluid_in[], const int nva
 //    skip the dual-energy field for HYDRO/MHD
 #     if ( MODEL == HYDRO  ||  MODEL == MHD )
 #     if   ( DUAL_ENERGY == DE_ENPY )
-      if ( v_out == ENPY )    v_out ++;
+      //if ( v_out == ENPY )    v_out ++;
 #     elif ( DUAL_ENERGY == DE_EINT )
-      if ( v_out == EINT )    v_out ++;
+      //if ( v_out == EINT )    v_out ++;
 #     endif
 
 //    skip the density field for ELBDM
@@ -492,7 +543,7 @@ void Init_ByFile_Default( real fluid_out[], const real fluid_in[], const int nva
 // calculate the dual-energy field for HYDRO/MHD
 #  if ( MODEL == HYDRO  ||  MODEL == MHD )
 #  if   ( DUAL_ENERGY == DE_ENPY )
-   fluid_out[ENPY] = Hydro_Fluid2Entropy( fluid_in[DENS], fluid_in[MOMX], fluid_in[MOMY], fluid_in[MOMZ], fluid_in[ENGY], GAMMA-1.0 );
+   //fluid_out[ENPY] = Hydro_Fluid2Entropy( fluid_in[DENS], fluid_in[MOMX], fluid_in[MOMY], fluid_in[MOMZ], fluid_in[ENGY], GAMMA-1.0 );
 #  elif ( DUAL_ENERGY == DE_EINT )
 #  error : DE_EINT is NOT supported yet !!
 #  endif

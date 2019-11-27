@@ -61,7 +61,7 @@ SIMU_OPTION += -DFLU_SCHEME=MHM_RP
 
 # scheme of spatial data reconstruction: PLM/PPM (piecewise-linear/piecewise-parabolic)
 # --> useless for RTVD
-SIMU_OPTION += -DLR_SCHEME=PPM
+SIMU_OPTION += -DLR_SCHEME=PLM
 
 # Riemann solver: EXACT/ROE/HLLE/HLLC
 # --> useless for RTVD
@@ -74,7 +74,7 @@ SIMU_OPTION += -DDUAL_ENERGY=DE_ENPY
 # number of user-defined passively advected scalars
 # --> set it to 0 or comment it out if none is required
 # --> useless for RTVD
-SIMU_OPTION += -DNCOMP_PASSIVE_USER=13
+SIMU_OPTION += -DNCOMP_PASSIVE_USER=22
 
 
 # (b-2) MHD options
@@ -148,6 +148,7 @@ SIMU_OPTION += -DNLEVEL=18
 
 # maximum number of patches on each AMR level
 # --> must be set in any cases
+# 256^3 = 32768
 SIMU_OPTION += -DMAX_PATCH=1500000
 
 # GPU acceleration
