@@ -148,6 +148,10 @@ void Flu_Restrict( const int FaLv, const int SonFluSg, const int FaFluSg, const 
          for (int v=0; v<NVar_Flu; v++)
          {
             TFluVarIdx = TFluVarIdxList[v];
+#           if (defined SUPPORT_GRACKLE) && (defined GRACKLE_H2_SOBOLEV)
+            if ( (TFluVarIdx==Idx_alpha) || (TFluVarIdx==Idx_OpTauX) || (TFluVarIdx==Idx_OpTauX) || (TFluVarIdx==Idx_OpTauX))
+               continue;
+#           endif
 
             for (int k=0; k<PATCH_SIZE/2; k++)  {  K = k*2;    Kp = K+1;   kk = k + Disp_k;
             for (int j=0; j<PATCH_SIZE/2; j++)  {  J = j*2;    Jp = J+1;   jj = j + Disp_j;
