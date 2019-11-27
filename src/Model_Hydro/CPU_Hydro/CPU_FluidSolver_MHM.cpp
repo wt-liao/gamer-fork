@@ -535,6 +535,8 @@ void Hydro_H2_Opacity(const real g_Half_PriVar[][ CUBE(FLU_NXT) ], real g_Output
    const double* Alpha_Table = H2_Op_Alpha_Table; 
    const double* T_Table     = H2_Op_T_Table ; 
    
+   const int Ghost_Size = (N_HF_VAR - PS2)/2 ;
+
 #  ifdef DUAL_ENERGY
    const bool CheckMinPres_Yes = true; 
 #  endif
@@ -547,10 +549,10 @@ void Hydro_H2_Opacity(const real g_Half_PriVar[][ CUBE(FLU_NXT) ], real g_Output
       const int k_out    = idx_out / size_ij;
       const int idx_op   = IDX321( i_out, j_out, k_out, PS2, PS2 );
 
-      const int i_in     = i_out + FLU_GHOST_SIZE;
-      const int j_in     = j_out + FLU_GHOST_SIZE;
-      const int k_in     = k_out + FLU_GHOST_SIZE;
-      const int idx_in   = IDX321( i_in, j_in, k_in, FLU_NXT, FLU_NXT );
+      const int i_in     = i_out + Ghost_Size;
+      const int j_in     = j_out + Ghost_Size;
+      const int k_in     = k_out + Ghost_Size;
+      const int idx_in   = IDX321( i_in, j_in, k_in, N_HF_VAR, N_HF_VAR );
       
       // 1.0 get mean moleculat weight mu:
       //     mu    = Sum(rho_HI + rho_HII + rho_H2 + rho_HeI) / (m_H*n_tot)
@@ -597,12 +599,12 @@ void Hydro_H2_Opacity(const real g_Half_PriVar[][ CUBE(FLU_NXT) ], real g_Output
       }
       
       // 4.0 get velocity gradient
-      ID_iL = IDX321( i_in-1, j_in,   k_in,   FLU_NXT, FLU_NXT );
-      ID_iR = IDX321( i_in+1, j_in,   k_in,   FLU_NXT, FLU_NXT );
-      ID_jL = IDX321( i_in,   j_in-1, k_in,   FLU_NXT, FLU_NXT );
-      ID_jR = IDX321( i_in,   j_in+1, k_in,   FLU_NXT, FLU_NXT );
-      ID_kL = IDX321( i_in,   j_in,   k_in-1, FLU_NXT, FLU_NXT );
-      ID_kR = IDX321( i_in,   j_in,   k_in+1, FLU_NXT, FLU_NXT );
+      ID_iL = IDX321( i_in-1, j_in,   k_in,   N_HF_VAR, N_HF_VAR );
+      ID_iR = IDX321( i_in+1, j_in,   k_in,   N_HF_VAR, N_HF_VAR );
+      ID_jL = IDX321( i_in,   j_in-1, k_in,   N_HF_VAR, N_HF_VAR );
+      ID_jR = IDX321( i_in,   j_in+1, k_in,   N_HF_VAR, N_HF_VAR );
+      ID_kL = IDX321( i_in,   j_in,   k_in-1, N_HF_VAR, N_HF_VAR );
+      ID_kR = IDX321( i_in,   j_in,   k_in+1, N_HF_VAR, N_HF_VAR );
       
       // calculate velocity gradient
       dvx_dx = (g_Half_PriVar[MOMX][ID_iR] - g_Half_PriVar[MOMX][ID_iL]) * _2dh;
