@@ -520,12 +520,9 @@ void Hydro_H2_Opacity(const real g_Half_PriVar[][ CUBE(FLU_NXT) ], real g_Output
    int Idx, ID_iL, ID_iR, ID_jL, ID_jR, ID_kL, ID_kR ;
    
    const double m_H           = (real)1.672621898e-24;
-   const double m_e           = (real)9.10938356e-28;
-   const double mass_ratio_ep = m_e / m_H ;
    const double _m_H          = (real)1.0/m_H;
    const double _m_2H         = _m_H / (real)2.0;
    const double _m_4H         = _m_H / (real)4.0;
-   const double _m_e          = (real)1.0/m_e;
 
    const double _2dh          = (real)0.5/dh ;
    const double Gamma_m1      = Gamma - (real)1.0;
@@ -562,26 +559,26 @@ void Hydro_H2_Opacity(const real g_Half_PriVar[][ CUBE(FLU_NXT) ], real g_Output
       rho_HII = g_Half_PriVar[Idx_HII][idx_in] * Unit_Dens;
       rho_H2I = g_Half_PriVar[Idx_H2I][idx_in] * Unit_Dens;
       rho_HeI = g_Half_PriVar[Idx_HeI][idx_in] * Unit_Dens;
-      rho_e   = g_Half_PriVar[Idx_e  ][idx_in] * Unit_Dens * mass_ratio_ep;
+      rho_e   = g_Half_PriVar[Idx_e  ][idx_in] * Unit_Dens;
       
       n_HI    = rho_HI  * _m_H ;
       n_HII   = rho_HII * _m_H ;
       n_H2I   = rho_H2I * _m_2H;
       n_HeI   = rho_HeI * _m_4H;
-      n_e     = rho_e   * _m_e ;
+      n_e     = rho_e   * _m_H ;
       n_tot   = n_HI+n_HII+n_H2I+n_HeI+n_e;
       
       mu      = (rho_HI+rho_HII+rho_H2I+rho_HeI)/(m_H*n_tot);
       
       // 2.0 get half step physical variables
 #     ifndef DUAL_ENERGY
-      pres  = g_Half_PriVar[idx_in][ENGY];
+      pres  = g_Half_PriVar[ENGY][idx_in];
 #     else
-      pres  = Hydro_DensEntropy2Pres(g_Half_PriVar[idx_in][DENS], g_Half_PriVar[idx_in][ENPY], 
+      pres  = Hydro_DensEntropy2Pres(g_Half_PriVar[DENS][idx_in], g_Half_PriVar[ENPY][idx_in], 
                                      Gamma_m1, CheckMinPres_Yes, MIN_PRES);
 #     endif
                                      
-      dens  = g_Half_PriVar[idx_in][DENS];
+      dens  = g_Half_PriVar[DENS][idx_in];
       _dens = (real)1.0 / dens;
       kbT   = pres * _dens * mu; // kbT -> dimensionless (kb*T)/(m_H)
       lnkbT = LOG(kbT); 
@@ -600,17 +597,17 @@ void Hydro_H2_Opacity(const real g_Half_PriVar[][ CUBE(FLU_NXT) ], real g_Output
       }
       
       // 4.0 get velocity gradient
-      ID_iL = (k_in    *FLU_NXT   + j_in)    *FLU_NXT + (i_in-1) ;
-      ID_iR = (k_in    *FLU_NXT   + j_in)    *FLU_NXT + (i_in+1) ;
-      ID_jL = (k_in    *FLU_NXT   + (j_in-1))*FLU_NXT + i_in     ;
-      ID_jR = (k_in    *FLU_NXT   + (j_in+1))*FLU_NXT + i_in     ;
-      ID_kL = ((k_in-1)*FLU_NXT   + j_in)    *FLU_NXT + i_in     ;
-      ID_kR = ((k_in+1)*FLU_NXT   + j_in)    *FLU_NXT + i_in     ;
+      ID_iL = IDX321( i_in-1, j_in,   k_in,   FLU_NXT, FLU_NXT );
+      ID_iR = IDX321( i_in+1, j_in,   k_in,   FLU_NXT, FLU_NXT );
+      ID_jL = IDX321( i_in,   j_in-1, k_in,   FLU_NXT, FLU_NXT );
+      ID_jR = IDX321( i_in,   j_in+1, k_in,   FLU_NXT, FLU_NXT );
+      ID_kL = IDX321( i_in,   j_in,   k_in-1, FLU_NXT, FLU_NXT );
+      ID_kR = IDX321( i_in,   j_in,   k_in+1, FLU_NXT, FLU_NXT );
       
       // calculate velocity gradient
-      dvx_dx = (g_Half_PriVar[ID_iR][MOMX] - g_Half_PriVar[ID_iL][MOMX]) * _2dh;
-      dvy_dy = (g_Half_PriVar[ID_jR][MOMY] - g_Half_PriVar[ID_jL][MOMY]) * _2dh;
-      dvz_dz = (g_Half_PriVar[ID_kR][MOMZ] - g_Half_PriVar[ID_kL][MOMZ]) * _2dh;
+      dvx_dx = (g_Half_PriVar[MOMX][ID_iR] - g_Half_PriVar[MOMX][ID_iL]) * _2dh;
+      dvy_dy = (g_Half_PriVar[MOMY][ID_jR] - g_Half_PriVar[MOMY][ID_jL]) * _2dh;
+      dvz_dz = (g_Half_PriVar[MOMZ][ID_kR] - g_Half_PriVar[MOMZ][ID_kL]) * _2dh;
       
       // 5.0 calculate tau
       tau_x = alpha* FABS(cs/dvx_dx); 
@@ -619,10 +616,11 @@ void Hydro_H2_Opacity(const real g_Half_PriVar[][ CUBE(FLU_NXT) ], real g_Output
       
       // 6.0 store variables: alpha and tau
       // note: real tau = (tau*length_unit) * n_H2 <- do this in grackle
-      g_Output[Idx_alpha ][idx_op] = alpha; 
-      g_Output[Idx_OpTauX][idx_op] = tau_x;
-      g_Output[Idx_OpTauY][idx_op] = tau_y;
-      g_Output[Idx_OpTauZ][idx_op] = tau_z;
+      g_Output[Idx_alpha ][idx_out] = alpha; 
+      g_Output[Idx_OpTauX][idx_out] = tau_x;
+      g_Output[Idx_OpTauY][idx_out] = tau_y;
+      g_Output[Idx_OpTauZ][idx_out] = tau_z;
+
       
       //### if tau is very small, it might become difficult to calculate beta
       //### check this in grackle
