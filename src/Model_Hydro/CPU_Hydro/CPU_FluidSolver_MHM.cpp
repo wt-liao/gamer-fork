@@ -414,7 +414,7 @@ void CPU_FluidSolver_MHM(
                                NormPassive, NNorm, c_NormIdx );
                                
 #        if ( FLU_SCHEME == MHM_RP ) && (defined SUPPORT_GRACKLE) && (defined GRACKLE_H2_SOBOLEV)
-         Hydro_H2_Opacity(g_Half_Var_1PG, g_Flu_Array_Out[P], H2_Op_T_Table, H2_Op_Alpha_Table, 
+         Hydro_H2_Opacity(g_PriVar_Half_1PG, g_Flu_Array_Out[P], H2_Op_T_Table, H2_Op_Alpha_Table, 
                           H2_Op_N_elem, dh, Gamma, Unit_Dens);
 #        endif 
 
