@@ -11,7 +11,7 @@
 //
 // Note        :  1. Called by Gra_AdvancedDt() after the base-level FFT solver, EvolveLevel() after grid
 //                   refinement, and Flu_CorrAfterAllSync() when OPT__CORR_AFTER_ALL_SYNC is enabled
-//                2. For potential at lv>0, pot_ext[] is filled by "Poi_Close" directly (except after grid
+//                2. For potential at lv>0, pot_ext[] is filled by Poi_Close() directly (except after grid
 //                   refinement), and thus NO need to call this function for that.
 //                3. After grid refinement, only newly-allocated patches need to set pot_ext[]
 //                   --> We set pot_ext[0][0][0] == POT_EXT_NEED_INIT for newly-allocated patches
@@ -52,9 +52,9 @@ void Poi_StorePotWithGhostZone( const int lv, const int PotSg, const bool AllPat
       {
          if ( AllPatch  ||  amr->patch[PotSg][lv][PID0]->pot_ext[0][0][0] == POT_EXT_NEED_INIT )
          {
-            Prepare_PatchData( lv, PrepPotTime, Pot, PotGhost, 1, &PID0, _POTE, OPT__REF_POT_INT_SCHEME,
-                               UNIT_PATCH, NSIDE_26, IntPhase_No, OPT__BC_FLU, OPT__BC_POT,
-                               MinDens_No, MinPres_No, DE_Consistency_No );
+            Prepare_PatchData( lv, PrepPotTime, Pot, NULL, PotGhost, 1, &PID0, _POTE, _NONE,
+                               OPT__REF_POT_INT_SCHEME, INT_NONE, UNIT_PATCH, NSIDE_26, IntPhase_No,
+                               OPT__BC_FLU, OPT__BC_POT, MinDens_No, MinPres_No, DE_Consistency_No );
 
             for (int PID=PID0, P=0; PID<PID0+8; PID++, P++)
                memcpy( amr->patch[PotSg][lv][PID]->pot_ext, Pot+P*PotSizeCube, PotSizeCube*sizeof(real) );

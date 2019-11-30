@@ -252,9 +252,9 @@ void Par_UpdateParticle( const int lv, const double TimeNew, const double TimeOl
 
          else
 #        endif // #ifdef STORE_POT_GHOST
-            Prepare_PatchData( lv, PrepPotTime, Pot, PotGhost, 1, &PID0, _POTE,
-                               OPT__GRA_INT_SCHEME, UNIT_PATCH, NSIDE_26, IntPhase_No, OPT__BC_FLU, OPT__BC_POT,
-                               MinDens_No, MinPres_No, DE_Consistency_No );
+            Prepare_PatchData( lv, PrepPotTime, Pot, NULL, PotGhost, 1, &PID0, _POTE, _NONE,
+                               OPT__GRA_INT_SCHEME, INT_NONE, UNIT_PATCH, NSIDE_26, IntPhase_No,
+                               OPT__BC_FLU, OPT__BC_POT, MinDens_No, MinPres_No, DE_Consistency_No );
       } // if ( OPT__GRAVITY_TYPE == GRAVITY_SELF  ||  OPT__GRAVITY_TYPE == GRAVITY_BOTH )
 
 
@@ -277,7 +277,7 @@ void Par_UpdateParticle( const int lv, const double TimeNew, const double TimeOl
                for (int j=0; j<PotSize; j++)    {  y = PhyCorner_ExtPot[1] + (double)j*dh;
                for (int i=0; i<PotSize; i++)    {  x = PhyCorner_ExtPot[0] + (double)i*dh;
 
-                  Pot3D[P][k][j][i] += CPU_ExternalPot( x, y, z, PrepPotTime, ExtPot_AuxArray );
+                  Pot3D[P][k][j][i] += ExternalPot( x, y, z, PrepPotTime, ExtPot_AuxArray );
 
                }}}
             }
@@ -294,7 +294,7 @@ void Par_UpdateParticle( const int lv, const double TimeNew, const double TimeOl
 
 //             3.1 external gravity (currently useful only for HYDRO)
                if ( OPT__GRAVITY_TYPE == GRAVITY_EXTERNAL  ||  OPT__GRAVITY_TYPE == GRAVITY_BOTH )
-                  CPU_ExternalAcc( Acc_Temp, x, y, z, PrepPotTime, ExtAcc_AuxArray );
+                  ExternalAcc( Acc_Temp, x, y, z, PrepPotTime, ExtAcc_AuxArray );
 
 
 //             3.2 self-gravity

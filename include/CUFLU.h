@@ -8,9 +8,13 @@
 // *********************************************************************
 
 
-// include "Macro" and "Typedef" here since the header "GAMER.h" is NOT included in GPU solvers
-#include "Macro.h"
-#include "Typedef.h"
+// include "Macro.h" and "Typedef.h" here since the header "GAMER.h" is NOT included in GPU solvers
+#ifdef __CUDACC__
+# include "Macro.h"
+# include "Typedef.h"
+#else
+# include "GAMER.h"
+#endif
 
 
 // allow GPU to output messages in the debug mode
@@ -26,81 +30,114 @@
 #endif
 
 
+// bitwise reproducibility in flux and electric field fix-up operations
+#ifdef BITWISE_REPRODUCIBILITY
+#  define BIT_REP_FLUX
+#endif
+
+// enable BIT_REP_ELECTRIC by default even when BITWISE_REPRODUCIBILITY is off
+// --> it ensures that the B field on the common interface between two nearby patches are fully
+//     consistent with each other (even the round-off errors are the same)
+//     --> reducing the div(B) errors significantly
+#ifdef MHD
+//#ifdef BITWISE_REPRODUCIBILITY
+#  define BIT_REP_ELECTRIC
+//#endif
+#endif
+
+
+
 // #################################
 // ## macros for different models ##
 // #################################
 
-// 1. hydro/MHD macro
+// 1. hydro macro
 //=========================================================================================
-#if   ( MODEL == HYDRO  ||  MODEL == MHD )
-// structure data type for the GPU hydro kernels
-// --> note that for FluVar we must define Passive[] even when NCOMP_PASSIVE == 0
-// --> FluVar5 is used for variables which do not need to consider passive scalars even when NCOMP_PASSIVE > 0
-//     (e.g., eigenvectors/eigenvalues in CUFLU_Shared_RiemannSolver_Roe() )
 #if   ( MODEL == HYDRO )
-struct FluVar   { real Rho, Px, Py, Pz, Egy, Passive[NCOMP_PASSIVE]; };
-struct FluVar5  { real Rho, Px, Py, Pz, Egy; };
-#elif ( MODEL == MHD )
-struct FluVar   { real Rho, Px, Py, Pz, Egy, Passive[NCOMP_PASSIVE], Bx, By, Bz; };
-struct MHDVar1D { real Rho, Px, Py, Pz, Egy, By, Bz; };
-#endif
-
 
 // size of different arrays
 #if ( FLU_SCHEME == MHM  ||  FLU_SCHEME == MHM_RP  ||  FLU_SCHEME == CTU )
 
+// ** to reduce the GPU memory consumption, large arrays in the fluid solvers are reused as much as possible
+// ** --> the strides of arrays can change when accessed by different routines for different purposes
+
+// N_SLOPE_PPM          : size of Slope_PPM[]
+// N_FC_VAR             : size of FC_Var[]
+// N_FC_FLUX            : size of FC_Flux[]
+// N_FL_FLUX/N_HF_FLUX  : for accessing FC_Flux[]
+//                        --> may be different from N_FC_FLUX
+//                            --> for example, in MHM_RP FC_Flux[] is also linked to Half_Flux[] used by
+//                                Hydro_RiemannPredict_Flux() and Hydro_RiemannPredict()
+//                            --> for the latter two routines, Half_Flux[] is accessed with N_HF_FLUX
+//                                that is smaller than N_FC_FLUX
+// N_HF_VAR             : for accessing PriVar_Half[], which is linked to PriVar[] with the size FLU_NXT^3
+//                        --> also for accessing FC_B_Half[] in MHD
+
+// NWAVE                : number of characteristic waves
+// NCOMP_TOTAL_PLUS_MAG : total number of fluid variables plus magnetic field
+// MAG_OFFSET           : array offset of magnetic field for arrays with the size NCOMP_TOTAL_PLUS_MAG
 
 #  if   ( FLU_SCHEME == MHM )
 
-#     define N_FC_VAR     ( PS2 + 2      )
-#     define N_FL_FLUX    ( PS2 + 1      )
-#     define N_FC_FLUX    ( N_FL_FLUX    )
+#     define N_FC_VAR            ( PS2 + 2 )
+#     define N_FL_FLUX           ( PS2 + 1 )
+#     define N_FC_FLUX           ( N_FL_FLUX )
 
 #  elif ( FLU_SCHEME == MHM_RP )
 
-#     define N_FC_VAR     ( PS2 + 2      )
-#     if   ( MODEL == HYDRO )
-#     define N_FL_FLUX    ( PS2 + 1      )
-#     define N_HF_FLUX    ( FLU_NXT - 1  )
-#     elif ( MODEL == MHD )
-#     define N_FL_FLUX    ( PS2 + 2      )
-#     define N_HF_FLUX    ( FLU_NXT      )
-#     endif
-#     define N_HF_VAR     ( FLU_NXT - 2  )
-#     define N_FC_FLUX    ( N_HF_FLUX    )
+#    ifdef MHD
+#     define N_FC_VAR            ( PS2 + 2 )
+#     define N_FL_FLUX           ( PS2 + 2 )
+#     define N_HF_FLUX           ( FLU_NXT )
+#    else
+#     define N_FC_VAR            ( PS2 + 2 )
+#     define N_FL_FLUX           ( PS2 + 1 )
+#     define N_HF_FLUX           ( FLU_NXT - 1 )
+#    endif
+#     define N_FC_FLUX           ( N_HF_FLUX )
+#     define N_HF_VAR            ( FLU_NXT - 2 )
 
 #  elif ( FLU_SCHEME == CTU )
 
-#     if   ( MODEL == HYDRO )
-#     define N_FC_VAR     ( PS2 + 2      )
-#     define N_FL_FLUX    ( N_FC_VAR     )
-#     elif ( MODEL == MHD )
-#     define N_FC_VAR     ( PS2 + 4      )
-#     define N_FL_FLUX    ( N_FC_VAR - 2 )
-#     endif
-#     define N_HF_FLUX    ( N_FC_VAR     )
-#     define N_FC_FLUX    ( N_FC_VAR     )
+#    ifdef MHD
+#     define N_FC_VAR            ( PS2 + 4 )
+#     define N_FL_FLUX           ( N_FC_VAR - 2 )
+#     define N_HF_VAR            ( PS2 + 2 )
+#    else
+#     define N_FC_VAR            ( PS2 + 2 )
+#     define N_FL_FLUX           ( N_FC_VAR )
+#    endif
+#     define N_HF_FLUX           ( N_FC_VAR )
+#     define N_FC_FLUX           ( N_HF_FLUX )
 
-#  endif
+#  endif // FLU_SCHEME
 
-#  define N_SLOPE_PPM     ( N_FC_VAR + 2 )
+#  define N_SLOPE_PPM            ( N_FC_VAR + 2 )
+#  define NCOMP_TOTAL_PLUS_MAG   ( NCOMP_TOTAL + NCOMP_MAG )
 
-#  if ( MODEL == MHD )
-#  define N_HF_ELE        ( N_HF_FLUX - 1 )
-#  define N_FL_ELE        ( N_FL_FLUX - 1 )
-#  define N_LC_ELE        ( N_FC_FLUX - 1 )
+#  ifdef MHD
+#   define N_HF_ELE              ( N_FC_FLUX - 1 )
+#   define N_FL_ELE              ( N_FL_FLUX - 1 )
+#   define N_EC_ELE              ( N_FC_FLUX - 1 )
+#   define NWAVE                 ( NCOMP_FLUID + 2 )
+#   define MAG_OFFSET            ( NCOMP_TOTAL )
+#  else
+#   define N_EC_ELE              0
+#   define NWAVE                 ( NCOMP_FLUID )
+#   define MAG_OFFSET            ( NULL_INT )
 #  endif
 
 #endif // #if ( FLU_SCHEME == MHM  ||  FLU_SCHEME == MHM_RP  ||  FLU_SCHEME == CTU )
 
 
-// check the non-physical negative values (e.g., negative density) inside the fluid solver
-#ifdef GAMER_DEBUG
+// check non-physical negative values (e.g., negative density) for the fluid solver
+#if ( defined GAMER_DEBUG  &&  MODEL == HYDRO )
 #  define CHECK_NEGATIVE_IN_FLUID
 #endif
 
 #ifdef CHECK_NEGATIVE_IN_FLUID
 #  include "stdio.h"
+   bool Hydro_CheckNegative( const real Input );
 #endif
 
 
@@ -115,19 +152,21 @@ struct MHDVar1D { real Rho, Px, Py, Pz, Egy, By, Bz; };
 // verify that the density and pressure in the intermediate states of Roe's Riemann solver are positive.
 // --> if either is negative, we switch to other Riemann solvers (EXACT/HLLE/HLLC/HLLD)
 #if (  ( FLU_SCHEME == MHM || FLU_SCHEME == MHM_RP || FLU_SCHEME == CTU )  &&  RSOLVER == ROE  )
-#  if   ( MODEL == HYDRO )
-//#  define CHECK_INTERMEDIATE    HLLC
-#  define CHECK_INTERMEDIATE    HLLE
-#  elif ( MODEL == MHD )
-//#  define CHECK_INTERMEDIATE    HLLD
-#  define CHECK_INTERMEDIATE    HLLE
+#  ifdef MHD
+//#     define CHECK_INTERMEDIATE    HLLD
+#     define CHECK_INTERMEDIATE    HLLE
+#  else
+//#     define CHECK_INTERMEDIATE    HLLC
+#     define CHECK_INTERMEDIATE    HLLE
 #  endif
 #endif
 
+
 // use Eulerian with Y factor for Roe Solver in MHD
-#if (  MODEL == MHD  &&  ( RSOLVER == ROE || RSOLVER == HLLE )  )
+#if (  defined MHD  &&  ( RSOLVER == ROE || RSOLVER == HLLE )  )
 #  define EULERY
 #endif
+
 
 // do not use the reference states for HLL solvers during the data reconstruction, as suggested in ATHENA
 #if (  defined RSOLVER  &&  ( RSOLVER == HLLE || RSOLVER == HLLC || RSOLVER == HLLD )  )
@@ -142,14 +181,8 @@ struct MHDVar1D { real Rho, Px, Py, Pz, Egy, By, Bz; };
 #endif
 
 
-// use the dissipative structure for the WAF scheme
-#if ( FLU_SCHEME == WAF )
-// #define WAF_DISSIPATE
-#endif
-
-
-// maximum allowed error for the exact Riemann solver, WAF scheme, and some MHD operations
-#if ( FLU_SCHEME == WAF  ||  RSOLVER == EXACT  ||  CHECK_INTERMEDIATE == EXACT  ||  MODEL == MHD )
+// maximum allowed error for the exact Riemann solver and some MHD operations
+#if (  ( FLU_SCHEME != RTVD && RSOLVER == EXACT )  ||  CHECK_INTERMEDIATE == EXACT  ||  ( MODEL == HYDRO && defined MHD )  )
 #  ifdef FLOAT8
 #     define MAX_ERROR    1.0e-14
 #  else
@@ -184,16 +217,6 @@ struct MHDVar1D { real Rho, Px, Py, Pz, Egy, By, Bz; };
 //=========================================================================================
 #if ( MODEL == HYDRO )
 #if   ( FLU_SCHEME == RTVD )
-
-#     define FLU_BLOCK_SIZE_X       FLU_NXT
-
-#  ifdef FLOAT8
-#     define FLU_BLOCK_SIZE_Y       4
-#  else
-#     define FLU_BLOCK_SIZE_Y       8
-#  endif
-
-#elif ( FLU_SCHEME == WAF )
 
 #     define FLU_BLOCK_SIZE_X       FLU_NXT
 
@@ -290,97 +313,7 @@ struct MHDVar1D { real Rho, Px, Py, Pz, Egy, By, Bz; };
 #endif
 
 
-// 2. MHD solver
-//=========================================================================================
-#elif ( MODEL == MHD )
-#if ( FLU_SCHEME == MHM_RP )
-
-#  if   ( GPU_ARCH == FERMI )
-#     ifdef FLOAT8
-#     define FLU_BLOCK_SIZE_X       256
-#     else
-#     define FLU_BLOCK_SIZE_X       512
-#     endif
-#  elif ( GPU_ARCH == KEPLER )
-#     ifdef FLOAT8
-#     define FLU_BLOCK_SIZE_X       256
-#     else
-#     define FLU_BLOCK_SIZE_X       512
-#     endif
-#  elif ( GPU_ARCH == MAXWELL )
-#     ifdef FLOAT8
-#     define FLU_BLOCK_SIZE_X       256
-#     else
-#     define FLU_BLOCK_SIZE_X       512      // not optimized yet
-#     endif
-#  elif ( GPU_ARCH == PASCAL )
-#     ifdef FLOAT8
-#     define FLU_BLOCK_SIZE_X       256
-#     else
-#     define FLU_BLOCK_SIZE_X       512      // not optimized yet
-#     endif
-#  elif ( GPU_ARCH == VOLTA )
-#     ifdef FLOAT8
-#     define FLU_BLOCK_SIZE_X       256
-#     else
-#     define FLU_BLOCK_SIZE_X       512      // not optimized yet
-#     endif
-#  else
-#     define FLU_BLOCK_SIZE_X       NULL_INT
-#     ifdef GPU
-#     error : UNKNOWN GPU_ARCH !!
-#     endif
-#  endif
-
-#     define FLU_BLOCK_SIZE_Y       1
-
-#elif ( FLU_SCHEME == CTU )
-
-#  if   ( GPU_ARCH == FERMI )
-#     ifdef FLOAT8
-#     define FLU_BLOCK_SIZE_X       256
-#     else
-#     define FLU_BLOCK_SIZE_X       512
-#     endif
-#  elif ( GPU_ARCH == KEPLER )
-#     ifdef FLOAT8
-#     define FLU_BLOCK_SIZE_X       256
-#     else
-#     define FLU_BLOCK_SIZE_X       512
-#     endif
-#  elif ( GPU_ARCH == MAXWELL )
-#     ifdef FLOAT8
-#     define FLU_BLOCK_SIZE_X       256
-#     else
-#     define FLU_BLOCK_SIZE_X       512      // not optimized yet
-#     endif
-#  elif ( GPU_ARCH == PASCAL )
-#     ifdef FLOAT8
-#     define FLU_BLOCK_SIZE_X       256
-#     else
-#     define FLU_BLOCK_SIZE_X       512      // not optimized yet
-#     endif
-#  elif ( GPU_ARCH == VOLTA )
-#     ifdef FLOAT8
-#     define FLU_BLOCK_SIZE_X       256
-#     else
-#     define FLU_BLOCK_SIZE_X       512      // not optimized yet
-#     endif
-#  else
-#     define FLU_BLOCK_SIZE_X       NULL_INT
-#     ifdef GPU
-#     error : UNKNOWN GPU_ARCH !!
-#     endif
-#  endif
-
-#     define FLU_BLOCK_SIZE_Y       1
-
-#else
-#  error : ERROR : unsupported MHD scheme in the makefile !!
-#endif
-
-
-// 3. ELBDM kinematic solver
+// 2. ELBDM kinematic solver
 //=========================================================================================
 #elif ( MODEL == ELBDM )
 #     define FLU_BLOCK_SIZE_X       PS2
@@ -430,7 +363,7 @@ struct MHDVar1D { real Rho, Px, Py, Pz, Egy, By, Bz; };
 #endif // MODEL
 
 
-// 4. dt solver for fluid
+// 3. dt solver for fluid
 //=========================================================================================
 #     define DT_FLU_BLOCK_SIZE      512
 
@@ -457,12 +390,22 @@ struct MHDVar1D { real Rho, Px, Py, Pz, Egy, By, Bz; };
 
 
 
-// ##########################
-// ## function prototypes  ##
-// ##########################
+// #########################
+// ## CPU/GPU integration ##
+// #########################
 
-#if (  ( MODEL == HYDRO || MODEL == MHD )  &&  defined CHECK_NEGATIVE_IN_FLUID  )
-extern bool CPU_CheckNegative( const real Input );
+// GPU device function specifier
+#ifdef __CUDACC__
+# define GPU_DEVICE __forceinline__ __device__
+#else
+# define GPU_DEVICE
+#endif
+
+// unified CPU/GPU loop
+#ifdef __CUDACC__
+# define CGPU_LOOP( var, niter )    for (int (var)=threadIdx.x; (var)<(niter); (var)+=blockDim.x)
+#else
+# define CGPU_LOOP( var, niter )    for (int (var)=0;           (var)<(niter); (var)++          )
 #endif
 
 

@@ -7,17 +7,20 @@
 // Function    :  Output_Patch
 // Description :  Output the data of a single patch
 //
-// Example     :  char comment[10];
-//                sprintf( comment, "Step%d", AdvanceCounter[6] );
-//                Output_Patch( 6, 5560, comment );
+// Example     :  const int lv  = 2;
+//                const int PID = 20;
+//                char comment[10];
+//                sprintf( comment, "Step%ld", AdvanceCounter[lv] );
+//                Output_Patch( lv, PID, amr->FluSg[lv], amr->MagSg[lv], amr->PotSg[lv], comment );
 //
 // Parameter   :  lv      : Target refinement level
 //                PID     : Target patch index
 //                FluSg   : Sandglass of the fluid data
+//                MagSg   : Sandglass of the magnetic field data
 //                PotSg   : Sandglass of the potential data
 //                comment : String to attach to the end of the file name
 //-------------------------------------------------------------------------------------------------------
-void Output_Patch( const int lv, const int PID, const int FluSg, const int PotSg, const char *comment )
+void Output_Patch( const int lv, const int PID, const int FluSg, const int MagSg, const int PotSg, const char *comment )
 {
 
 // check
@@ -29,6 +32,11 @@ void Output_Patch( const int lv, const int PID, const int FluSg, const int PotSg
 
    if ( FluSg < 0  ||  FluSg >= 2 )
       Aux_Error( ERROR_INFO, "incorrect parameter %s = %d !!\n", "FluSg", FluSg );
+
+#  ifdef MHD
+   if ( MagSg < 0  ||  MagSg >= 2 )
+      Aux_Error( ERROR_INFO, "incorrect parameter %s = %d !!\n", "MagSg", MagSg );
+#  endif
 
 #  ifdef GRAVITY
    if ( PotSg < 0  ||  PotSg >= 2 )
@@ -42,10 +50,13 @@ void Output_Patch( const int lv, const int PID, const int FluSg, const int PotSg
    }
 
 
-   patch_t *Relation = amr->patch[    0][lv][PID];
-   patch_t *FluData  = amr->patch[FluSg][lv][PID];
+   patch_t *Relation                  = amr->patch[    0][lv][PID];
+   real    (*fluid)[PS1][PS1][PS1]    = amr->patch[FluSg][lv][PID]->fluid;
+#  ifdef MHD
+   real    (*magnetic)[PS1P1*PS1*PS1] = amr->patch[MagSg][lv][PID]->magnetic;
+#  endif
 #  ifdef GRAVITY
-   patch_t *PotData  = amr->patch[PotSg][lv][PID];
+   real    (*pot)[PS1][PS1]           = amr->patch[PotSg][lv][PID]->pot;
 #  endif
 
    char FileName[100];
@@ -60,7 +71,7 @@ void Output_Patch( const int lv, const int PID, const int FluSg, const int PotSg
       Aux_Message( stderr, "WARNING : file \"%s\" already exists and will be overwritten !!\n", FileName );
 
 
-// output patch information
+// 1. output patch information
    FILE *File = fopen( FileName, "w" );
 
    fprintf( File, "Rank %d  Lv %d  PID %d  Local ID %d  FluSg %d  PotSg %d  Time %13.7e  Step %ld  Counter %ld\n",
@@ -99,105 +110,176 @@ void Output_Patch( const int lv, const int PID, const int FluSg, const int PotSg
 
 
 // check whether or not the target patch stores physical data
-   if ( FluData->fluid == NULL )
+   if ( fluid == NULL )
       Aux_Message( stderr, "WARNING : Lv = %d, PID = %d does NOT store fluid data !!\n", lv, PID );
+#  ifdef MHD
+   if ( magnetic == NULL )
+      Aux_Message( stderr, "WARNING : Lv = %d, PID = %d does NOT store magnetic field data !!\n", lv, PID );
+#  endif
 #  ifdef GRAVITY
-   if ( PotData->pot == NULL )
+   if ( pot == NULL )
       Aux_Message( stderr, "WARNING : Lv = %d, PID = %d does NOT store potential data !!\n", lv, PID );
 #  endif
 
 
-// output header
+
+// 2. output physical data
+// header
    fprintf( File, "(%2s,%2s,%2s)", "i", "j", "k" );
 
-#  if   ( MODEL == HYDRO )
-   fprintf( File, "%14s%14s%14s%14s%14s%14s", "Density", "Px", "Py", "Pz", "Energy", "Pressure" );
+   for (int v=0; v<NCOMP_TOTAL; v++)   fprintf( File, "%14s", FieldLabel[v] );
 
+#  if   ( MODEL == HYDRO )
+#  ifdef MHD
+   for (int v=0; v<NCOMP_MAG; v++)     fprintf( File, "%14s", MagLabel[v] );
+   fprintf( File, "%14s", "MagEngy" );
+#  endif
+   fprintf( File, "%14s", "Pressure" );
 #  ifdef DUAL_ENERGY
    fprintf( File, "%14s", "DE-status" );
 #  endif
 
-#  elif ( MODEL == MHD )
-#  warning : WAIT MHD !!!
-
 #  elif ( MODEL == ELBDM )
-   fprintf( File, "%14s%14s%14s", "Density", "Real", "Imag" );
 
 #  else
-#  warning : WARNING : DO YOU WANT TO ADD the FILE HEADER HERE FOR THE NEW MODEL ??
+#  warning : WARNING : DO YOU WANT TO ADD THE FILE HEADER HERE FOR THE NEW MODEL ??
 #  endif // MODEL
 
-   for (int v=0; v<NCOMP_PASSIVE; v++)
-   fprintf( File, "%14s", PassiveFieldName_Grid[v] );
-
 #  ifdef GRAVITY
-   fprintf( File, "%14s", "Potential" );
+   fprintf( File, "%14s", PotLabel );
 #  endif
 
    fprintf( File, "\n" );
 
 
 // output data
-   real u[NCOMP_FLUID];
+   real u[NCOMP_TOTAL];
 
-   for (int k=0; k<PATCH_SIZE; k++)
-   for (int j=0; j<PATCH_SIZE; j++)
-   for (int i=0; i<PATCH_SIZE; i++)
+   for (int k=0; k<PS1; k++)
+   for (int j=0; j<PS1; j++)
+   for (int i=0; i<PS1; i++)
    {
-//    output cell indices
+//    cell indices
       fprintf( File, "(%2d,%2d,%2d)", i, j, k );
 
-      if ( FluData->fluid != NULL )
+      if ( fluid != NULL )
       {
 //       output all variables in the fluid array
-         for (int v=0; v<NCOMP_FLUID; v++)
+         for (int v=0; v<NCOMP_TOTAL; v++)
          {
-            u[v] = FluData->fluid[v][k][j][i];
+            u[v] = fluid[v][k][j][i];
             fprintf( File, " %13.6e", u[v] );
          }
 
-//       output pressure and dual-energy status in HYDRO
 #        if   ( MODEL == HYDRO )
-         fprintf( File, " %13.6e", ( u[ENGY]-0.5*(u[MOMX]*u[MOMX]+u[MOMY]*u[MOMY]+u[MOMZ]*u[MOMZ])/u[DENS] )*
-                                   (GAMMA-1.0) );
+//       magnetic field
+#        ifdef MHD
+         const real EngyB = ( magnetic == NULL ) ?
+                            NULL_REAL :
+                            MHD_GetCellCenteredBEnergyInPatch( lv, PID, i, j, k, MagSg );
+         real B[3] = { NULL_REAL, NULL_REAL, NULL_REAL };
+         if ( magnetic != NULL )    MHD_GetCellCenteredBFieldInPatch( B, lv, PID, i, j, k, MagSg );
+         fprintf( File, " %13.6e %13.6e %13.6e %13.6e", B[MAGX], B[MAGY], B[MAGZ], EngyB );
+#        endif
+
+//       pressure
+         const bool CheckMinPres_No = false;
+#        ifdef MHD
+//       set pressure to NULL_REAL if somehow magnetic[] is not allocated (likely due to a bug)
+         const real Pres = ( magnetic == NULL ) ?
+                           NULL_REAL :
+                           Hydro_GetPressure( u[DENS], u[MOMX], u[MOMY], u[MOMZ], u[ENGY],
+                                              GAMMA-1.0, CheckMinPres_No, NULL_REAL, EngyB );
+#        else
+         const real Pres = Hydro_GetPressure( u[DENS], u[MOMX], u[MOMY], u[MOMZ], u[ENGY],
+                                              GAMMA-1.0, CheckMinPres_No, NULL_REAL, NULL_REAL );
+#        endif
+         fprintf( File, " %13.6e", Pres );
+
+//       dual-energy variable
 #        ifdef DUAL_ENERGY
          fprintf( File, " %13c", Relation->de_status[k][j][i] );
 #        endif
 
-#        elif ( MODEL == MHD )
-#        warning : WAIT MHD !!!
-#        endif // MODEL
+#        elif ( MODEL == ELBDM )
 
-//       output the passive variables
-         for (int v=NCOMP_FLUID; v<NCOMP_TOTAL; v++)
-         fprintf( File, " %13.6e", FluData->fluid[v][k][j][i] );
-      } // if ( FluData->fluid != NULL )
+#        else
+#        warning : WARNING : DO YOU WANT TO ADD THE MODEL-SPECIFIC FIELD HERE FOR THE NEW MODEL ??
+#        endif // MODEL
+      } // if ( fluid != NULL )
 
       else
       {
 //       output empty strings if the fluid array is not allocated
-         for (int v=0; v<NCOMP_FLUID; v++)   fprintf( File, " %13s", "" );
+         for (int v=0; v<NCOMP_TOTAL; v++)   fprintf( File, " %13s", "" );
 
-#        if   ( MODEL == HYDRO )
+#        if ( MODEL == HYDRO )
+#        ifdef MHD
+         fprintf( File, " %13s %13s %13s %13s", "", "", "", "" );
+#        endif
          fprintf( File, " %13s", "" );
-#        elif ( MODEL == MHD )
-#        warning : WAIT MHD !!!
+#        ifdef DUAL_ENERGY
+         fprintf( File, " %13s", "" );
+#        endif
+
+#        elif ( MODEL == ELBDM )
+
+#        else
+#        warning : WARNING : DO YOU WANT TO ADD THE MODEL-SPECIFIC FIELD HERE FOR THE NEW MODEL ??
 #        endif // MODEL
+      } // if ( fluid != NULL ) ... else ...
 
-         for (int v=NCOMP_FLUID; v<NCOMP_TOTAL; v++)
-         fprintf( File, " %13s", "" );
-      } // if ( FluData->fluid != NULL ) ... else ...
-
-//    output potential
+//    potential
 #     ifdef GRAVITY
-      if ( PotData->pot != NULL )   fprintf( File, " %13.6e",  PotData->pot[k][j][i]);
+      if ( pot != NULL )   fprintf( File, " %13.6e", pot[k][j][i] );
+      else                 fprintf( File, " %13s", "" );
 #     endif
 
       fprintf( File, "\n" );
    } // i,j,k
 
 
-// output the particle data
+
+// 3. output face-centered magnetic field
+#  ifdef MHD
+   fprintf( File, "\n" );
+   fprintf( File, "====================================\n" );
+   fprintf( File, "== MAGNETIC FIELD (face-centered) == \n" );
+   fprintf( File, "====================================\n" );
+   fprintf( File, "\n" );
+
+   if ( magnetic != NULL )
+   {
+//    header
+      fprintf( File, "(%2s,%2s,%2s)%14s%14s%14s\n", "i", "j", "k", MagLabel[MAGX], MagLabel[MAGY], MagLabel[MAGZ] );
+
+      for (int k=0; k<PS1P1; k++)
+      for (int j=0; j<PS1P1; j++)
+      for (int i=0; i<PS1P1; i++)
+      {
+//       cell indices
+         fprintf( File, "(%2d,%2d,%2d)", i, j, k );
+
+//       B_X
+         if ( j < PS1  &&  k < PS1 )   fprintf( File, " %13.6e", magnetic[MAGX][ IDX321_BX(i,j,k,PS1,PS1) ] );
+         else                          fprintf( File, " %13s", "" );
+
+//       B_Y
+         if ( i < PS1  &&  k < PS1 )   fprintf( File, " %13.6e", magnetic[MAGY][ IDX321_BY(i,j,k,PS1,PS1) ] );
+         else                          fprintf( File, " %13s", "" );
+
+//       B_Z
+         if ( i < PS1  &&  j < PS1 )   fprintf( File, " %13.6e", magnetic[MAGZ][ IDX321_BZ(i,j,k,PS1,PS1) ] );
+         else                          fprintf( File, " %13s", "" );
+
+         fprintf( File, "\n" );
+      } // i,j,k
+   } // if ( magnetic != NULL )
+#  endif // #ifdef MHD
+
+
+
+// 4. output particles
 #  ifdef PARTICLE
    long ParID;
    fprintf( File, "\n" );
@@ -205,30 +287,16 @@ void Output_Patch( const int lv, const int PID, const int FluSg, const int PotSg
    fprintf( File, "== PARTICLE DATA == \n" );
    fprintf( File, "===================\n" );
    fprintf( File, "\n" );
-   fprintf( File, "%5s  %10s  %13s  %13s  %13s  %13s  %13s  %13s  %13s  %13s",
-            "No.", "ParID", "Mass", "X", "Y", "Z", "Vx", "Vy", "Vz", "Time" );
-#  ifdef STORE_PAR_ACC
-   fprintf( File, "  %13s  %13s  %13s", "AccX", "AccY", "AccZ" );
-#  endif
-   for (int v=0; v<PAR_NPASSIVE; v++)
-   fprintf( File, "  %13s", PassiveFieldName_Par[v] );
+   fprintf( File, "%5s  %10s", "No.", "ParID" );
+   for (int v=0; v<PAR_NATT_TOTAL; v++)   fprintf( File, "  %13s", ParAttLabel[v] );
    fprintf( File, "\n" );
 
    for (int p=0; p<Relation->NPar; p++)
    {
       ParID = Relation->ParList[p];
 
-      fprintf( File, "%5d  %10ld  %13.6e  %13.6e  %13.6e  %13.6e  %13.6e  %13.6e  %13.6e  %13.6e",
-               p, ParID, amr->Par->Mass[ParID],
-               amr->Par->PosX[ParID], amr->Par->PosY[ParID], amr->Par->PosZ[ParID],
-               amr->Par->VelX[ParID], amr->Par->VelY[ParID], amr->Par->VelZ[ParID],
-               amr->Par->Time[ParID] );
-#     ifdef STORE_PAR_ACC
-      fprintf( File, "  %13.6e  %13.6e  %13.6e",
-               amr->Par->AccX[ParID], amr->Par->AccY[ParID], amr->Par->AccZ[ParID] );
-#     endif
-      for (int v=0; v<PAR_NPASSIVE; v++)
-      fprintf( File, "  %13.6e", amr->Par->Passive[v][ParID] );
+      fprintf( File, "%5d  %10ld", p, ParID );
+      for (int v=0; v<PAR_NATT_TOTAL; v++)   fprintf( File, "  %13.6e", amr->Par->Attribute[v][ParID] );
 
       fprintf( File, "\n" );
    }

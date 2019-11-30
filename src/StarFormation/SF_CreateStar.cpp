@@ -5,9 +5,6 @@
 
 static RandomNumber_t *RNG = NULL;
 
-//###: HARD-CODED FIELDS
-extern bool AGORA_UseMetal;
-
 
 
 
@@ -63,16 +60,14 @@ void SF_CreateStar( const int lv, const real TimeNew, const real dt )
    }
 
 
-//###: HARD-CODED FIELDS
 // determine if metallicity is included
-// --> currently it's used by the AGORA_IsolatedGalaxy test only (but will be made more general-purpose soon)
-   const bool UseMetal = AGORA_UseMetal;
+   const bool UseMetal = ( Idx_Metal != Idx_Undefined );
 
 
 // invoke the target star-formation method
    switch ( SF_CREATE_STAR_SCHEME )
    {
-#     if ( MODEL==HYDRO  ||  MODEL==MHD )
+#     if ( MODEL == HYDRO )
       case SF_CREATE_STAR_SCHEME_AGORA:   SF_CreateStar_AGORA( lv, TimeNew, dt, RNG, SF_CREATE_STAR_MIN_GAS_DENS,
                                                                SF_CREATE_STAR_MASS_EFF, SF_CREATE_STAR_MIN_STAR_MASS,
                                                                SF_CREATE_STAR_MAX_STAR_MFRAC, SF_CREATE_STAR_DET_RANDOM,

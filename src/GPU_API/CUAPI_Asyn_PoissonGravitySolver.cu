@@ -33,16 +33,18 @@ __global__ void CUPOT_PoissonSolver_MG( const real g_Rho_Array    [][ RHO_NXT*RH
 
 // Gravity solver prototypes
 #if   ( MODEL == HYDRO )
-__global__ void CUPOT_HydroGravitySolver(       real g_Flu_Array_New[][GRA_NIN][ PS1*PS1*PS1 ],
-                                          const real g_Pot_Array_New[][ GRA_NXT*GRA_NXT*GRA_NXT ],
-                                          const double g_Corner_Array[][3],
-                                          const real g_Pot_Array_USG[][ USG_NXT_G*USG_NXT_G*USG_NXT_G ],
-                                          const real g_Flu_Array_USG[][GRA_NIN-1][ PS1*PS1*PS1 ],
-                                                char g_DE_Array[][ PS1*PS1*PS1 ],
-                                          const real Gra_Const, const bool P5_Gradient, const OptGravityType_t GravityType,
-                                          const double TimeNew, const double TimeOld, const real dt, const real dh, const real MinEint );
-#elif ( MODEL == MHD )
-#warning : WAIT MHD !!!
+__global__
+void CUPOT_HydroGravitySolver(
+         real   g_Flu_Array_New[][GRA_NIN][ CUBE(PS1) ],
+   const real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
+   const double g_Corner_Array [][3],
+   const real   g_Pot_Array_USG[][ CUBE(USG_NXT_G) ],
+   const real   g_Flu_Array_USG[][GRA_NIN-1][ CUBE(PS1) ],
+         char   g_DE_Array     [][ CUBE(PS1) ],
+   const real   g_EngyB_Array  [][ CUBE(PS1) ],
+   const real dt, const real dh, const bool P5_Gradient,
+   const OptGravityType_t GravityType,
+   const double TimeNew, const double TimeOld, const real MinEint );
 
 #elif ( MODEL == ELBDM )
 __global__ void CUPOT_ELBDMGravitySolver(       real g_Flu_Array[][GRA_NIN][ PS1*PS1*PS1 ],
@@ -57,25 +59,30 @@ __global__ void CUPOT_ELBDMGravitySolver(       real g_Flu_Array[][GRA_NIN][ PS1
 
 
 // declare all device pointers
-extern real (*d_Rho_Array_P    )[ RHO_NXT*RHO_NXT*RHO_NXT ];
-extern real (*d_Pot_Array_P_In )[ POT_NXT*POT_NXT*POT_NXT ];
-extern real (*d_Pot_Array_P_Out)[ GRA_NXT*GRA_NXT*GRA_NXT ];
-extern real (*d_Flu_Array_G    )[GRA_NIN][ PS1*PS1*PS1 ];
+extern real (*d_Rho_Array_P    )[ CUBE(RHO_NXT) ];
+extern real (*d_Pot_Array_P_In )[ CUBE(POT_NXT) ];
+extern real (*d_Pot_Array_P_Out)[ CUBE(GRA_NXT) ];
+extern real (*d_Flu_Array_G    )[GRA_NIN][ CUBE(PS1)];
 extern double (*d_Corner_Array_G)[3];
-#if ( MODEL == HYDRO  ||  MODEL == MHD )
+#if ( MODEL == HYDRO )
 #ifdef UNSPLIT_GRAVITY
-extern real (*d_Pot_Array_USG_G)[ USG_NXT_G*USG_NXT_G*USG_NXT_G ];
-extern real (*d_Flu_Array_USG_G)[GRA_NIN-1][ PS1*PS1*PS1        ];
+extern real (*d_Pot_Array_USG_G)[ CUBE(USG_NXT_G) ];
+extern real (*d_Flu_Array_USG_G)[GRA_NIN-1][ CUBE(PS1) ];
 #else
-static real (*d_Pot_Array_USG_G)[ USG_NXT_G*USG_NXT_G*USG_NXT_G ] = NULL;
-static real (*d_Flu_Array_USG_G)[GRA_NIN-1][ PS1*PS1*PS1        ] = NULL;
+static real (*d_Pot_Array_USG_G)[ CUBE(USG_NXT_G) ] = NULL;
+static real (*d_Flu_Array_USG_G)[GRA_NIN-1][ CUBE(PS1) ] = NULL;
 #endif
 #ifdef DUAL_ENERGY
-extern char (*d_DE_Array_G)[ PS1*PS1*PS1 ];
+extern char (*d_DE_Array_G)[ CUBE(PS1) ];
 #else
-static char (*d_DE_Array_G)[ PS1*PS1*PS1 ] = NULL;
+static char (*d_DE_Array_G)[ CUBE(PS1) ] = NULL;
 #endif
-#endif // #if ( MODEL == HYDRO  ||  MODEL == MHD )
+#ifdef MHD
+extern real (*d_EngyB_Array_G)[ CUBE(PS1) ];
+#else
+static real (*d_EngyB_Array_G)[ CUBE(PS1) ] = NULL;
+#endif
+#endif // #if ( MODEL == HYDRO )
 
 extern cudaStream_t *Stream;
 
@@ -106,6 +113,7 @@ extern cudaStream_t *Stream;
 //                h_Pot_Array_USG      : Host array storing the prepared potential for UNSPLIT_GRAVITY
 //                h_Flu_Array_USG      : Host array storing the prepared density + momentum for UNSPLIT_GRAVITY
 //                h_DE_Array           : Host array storing the dual-energy status (for both input and output)
+//                h_EngyB_Array        : Host array storing the cell-centered magnetic energy (MHD only)
 //                NPatchGroup          : Number of patch groups evaluated simultaneously by GPU
 //                dt                   : Time interval to advance solution
 //                dh                   : Grid size
@@ -144,6 +152,7 @@ void CUAPI_Asyn_PoissonGravitySolver( const real h_Rho_Array    [][RHO_NXT][RHO_
                                       const real h_Pot_Array_USG[][USG_NXT_G][USG_NXT_G][USG_NXT_G],
                                       const real h_Flu_Array_USG[][GRA_NIN-1][PS1][PS1][PS1],
                                             char h_DE_Array     [][PS1][PS1][PS1],
+                                      const real h_EngyB_Array  [][PS1][PS1][PS1],
                                       const int NPatchGroup, const real dt, const real dh, const int SOR_Min_Iter,
                                       const int SOR_Max_Iter, const real SOR_Omega, const int MG_Max_Iter,
                                       const int MG_NPre_Smooth, const int MG_NPost_Smooth,
@@ -160,7 +169,7 @@ void CUAPI_Asyn_PoissonGravitySolver( const real h_Rho_Array    [][RHO_NXT][RHO_
 #  elif ( POT_SCHEME == MG )
    const dim3 Poi_Block_Dim( POT_BLOCK_SIZE_X, 1, 1 );
 #  endif
-   const dim3 Gra_Block_Dim( PATCH_SIZE, PATCH_SIZE, GRA_BLOCK_SIZE_Z );
+   const dim3 Gra_Block_Dim( GRA_BLOCK_SIZE );
    const int  NPatch      = NPatchGroup*8;
 #  if   ( POT_SCHEME == SOR )
    const real Poi_Const   = Poi_Coeff*dh*dh;
@@ -169,10 +178,6 @@ void CUAPI_Asyn_PoissonGravitySolver( const real h_Rho_Array    [][RHO_NXT][RHO_
 
 // model-dependent constants
 #  if   ( MODEL == HYDRO )
-   const real Gra_Const   = ( P5_Gradient ) ? -dt/(12.0*dh) : -dt/( 2.0*dh);
-
-#  elif ( MODEL == MHD )
-#  warning : WAIT MHD !!!
 
 #  elif ( MODEL == ELBDM )
    const real ELBDM_EtaDt = ELBDM_Eta*dt;
@@ -231,6 +236,11 @@ void CUAPI_Asyn_PoissonGravitySolver( const real h_Rho_Array    [][RHO_NXT][RHO_
       if ( h_DE_Array   == NULL )            Aux_Error( ERROR_INFO, "h_DE_Array == NULL !!\n" );
       if ( d_DE_Array_G == NULL )            Aux_Error( ERROR_INFO, "d_DE_Array_G == NULL !!\n" );
 #     endif
+
+#     ifdef MHD
+      if ( h_EngyB_Array   == NULL )         Aux_Error( ERROR_INFO, "h_EngyB_Array == NULL !!\n" );
+      if ( d_EngyB_Array_G == NULL )         Aux_Error( ERROR_INFO, "d_EngyB_Array_G == NULL !!\n" );
+#     endif
    }
 #  endif // #ifdef GAMER_DEBUG
 
@@ -251,6 +261,9 @@ void CUAPI_Asyn_PoissonGravitySolver( const real h_Rho_Array    [][RHO_NXT][RHO_
 #  endif
 #  ifdef DUAL_ENERGY
    int *DE_MemSize        = new int [GPU_NStream];
+#  endif
+#  ifdef MHD
+   int *EngyB_MemSize     = new int [GPU_NStream];
 #  endif
 
 
@@ -284,6 +297,9 @@ void CUAPI_Asyn_PoissonGravitySolver( const real h_Rho_Array    [][RHO_NXT][RHO_
 #     endif
 #     ifdef DUAL_ENERGY
       DE_MemSize     [s] = NPatch_per_Stream[s]*CUBE(PS1      )*sizeof(char);
+#     endif
+#     ifdef MHD
+      EngyB_MemSize  [s] = NPatch_per_Stream[s]*CUBE(PS1      )*sizeof(real);
 #     endif
    }
 
@@ -327,6 +343,11 @@ void CUAPI_Asyn_PoissonGravitySolver( const real h_Rho_Array    [][RHO_NXT][RHO_
 #        ifdef DUAL_ENERGY
          CUDA_CHECK_ERROR(  cudaMemcpyAsync( d_DE_Array_G      + UsedPatch[s], h_DE_Array      + UsedPatch[s],
                                              DE_MemSize[s],      cudaMemcpyHostToDevice, Stream[s] )  );
+#        endif
+
+#        ifdef MHD
+         CUDA_CHECK_ERROR(  cudaMemcpyAsync( d_EngyB_Array_G   + UsedPatch[s], h_EngyB_Array   + UsedPatch[s],
+                                             EngyB_MemSize[s],   cudaMemcpyHostToDevice, Stream[s] )  );
 #        endif
       } // if ( GraAcc )
    } // for (int s=0; s<GPU_NStream; s++)
@@ -385,10 +406,8 @@ void CUAPI_Asyn_PoissonGravitySolver( const real h_Rho_Array    [][RHO_NXT][RHO_
                                     d_Pot_Array_USG_G + UsedPatch[s],
                                     d_Flu_Array_USG_G + UsedPatch[s],
                                     d_DE_Array_G      + UsedPatch[s],
-                                    Gra_Const, P5_Gradient, GravityType,
-                                    TimeNew, TimeOld, dt, dh, MinEint );
-#        elif ( MODEL == MHD )
-#        warning : WAITH MHD !!!
+                                    d_EngyB_Array_G   + UsedPatch[s],
+                                    dt, dh, P5_Gradient, GravityType, TimeNew, TimeOld, MinEint );
 
 #        elif ( MODEL == ELBDM )
          CUPOT_ELBDMGravitySolver <<< NPatch_per_Stream[s], Gra_Block_Dim, 0, Stream[s] >>>
@@ -442,6 +461,9 @@ void CUAPI_Asyn_PoissonGravitySolver( const real h_Rho_Array    [][RHO_NXT][RHO_
 #  endif
 #  ifdef DUAL_ENERGY
    delete [] DE_MemSize;
+#  endif
+#  ifdef MHD
+   delete [] EngyB_MemSize;
 #  endif
 
 } // FUNCTION : CUAPI_Asyn_PoissonGravitySolver

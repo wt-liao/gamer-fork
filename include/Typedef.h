@@ -45,6 +45,11 @@ const TestProbID_t
    TESTPROB_HYDRO_RIEMANN                      =    9,
    TESTPROB_HYDRO_COLLIDING_JETS               =   10,
    TESTPROB_HYDRO_PLUMMER                      =   11,
+   TESTPROB_HYDRO_GRAVITY                      =   12,
+   TESTPROB_HYDRO_MHD_ABC                      =   13,
+   TESTPROB_HYDRO_MHD_ORSZAG_TANG_VORTEX       =   14,
+   TESTPROB_HYDRO_MHD_LINEAR_WAVE              =   15,
+   TESTPROB_HYDRO_JEANS_INSTABILITY            =   16,
 
    TESTPROB_ELBDM_EXTPOT                       = 1000;
 
@@ -55,6 +60,22 @@ const OptInit_t
    INIT_BY_FUNCTION = 1,
    INIT_BY_RESTART  = 2,
    INIT_BY_FILE     = 3;
+
+
+// data format for OPT__INIT=INIT_BY_FILE
+typedef int UM_IC_Format_t;
+const UM_IC_Format_t
+   UM_IC_FORMAT_NONE = 0,
+   UM_IC_FORMAT_VZYX = 1,
+   UM_IC_FORMAT_ZYXV = 2;
+
+
+// data format for PAR_INIT=PAR_INIT_BY_FILE
+typedef int ParICFormat_t;
+const ParICFormat_t
+   PAR_IC_FORMAT_NONE   = 0,
+   PAR_IC_FORMAT_ATT_ID = 1,
+   PAR_IC_FORMAT_ID_ATT = 2;
 
 
 // program restart options
@@ -87,16 +108,6 @@ const LR_Limiter_t
    ALBADA          = 3,
    VL_GMINMOD      = 4,
    EXTPRE          = 5;
-
-
-// TVD limiters for the WAF scheme
-typedef int WAF_Limiter_t;
-const WAF_Limiter_t
-   WAF_LIMITER_NONE = 0,
-   WAF_SUPERBEE     = 1,
-   WAF_VANLEER      = 2,
-   WAF_ALBADA       = 3,
-   WAF_MINBEE       = 4;
 
 
 // data output formats
@@ -141,7 +152,7 @@ const NSide_t
    NSIDE_26 = 26;
 
 
-// use the load-balance alternative function in "Buf_GetBufferData" and "Flag_Real"
+// use the load-balance alternative functions
 typedef int UseLBFunc_t;
 const UseLBFunc_t
    USELB_NO  = 0,
@@ -155,7 +166,7 @@ const Check_t
    CHECK_ON  = 1;
 
 
-// target solver in "InvokeSolvers"
+// target solver in InvokeSolver()
 // --> must start from 0 because of the current TIMING_SOLVER implementation
 // --> when adding new solvers, please modify the NSOLVER constant accordingly
 const int NSOLVER = 7;
@@ -178,7 +189,7 @@ const Solver_t
   ;
 
 
-// target mode in "Buf_GetBufferData and LB_GetBufferData"
+// target mode in Buf_GetBufferData() and LB_GetBufferData()
 typedef int GetBufMode_t;
 const GetBufMode_t
    DATA_GENERAL         = 1
@@ -190,7 +201,7 @@ const GetBufMode_t
   ,POT_FOR_POISSON      = 6
   ,POT_AFTER_REFINE     = 7
 #endif
-#if ( MODEL == MHD )
+#ifdef MHD
   ,COARSE_FINE_ELECTRIC = 8
 #endif
   ;
@@ -257,6 +268,11 @@ const ParOutputDens_t
    PAR_OUTPUT_DENS_NONE     = 0,
    PAR_OUTPUT_DENS_PAR_ONLY = 1,
    PAR_OUTPUT_DENS_TOTAL    = 2;
+
+typedef int ParPass2Son_t;
+const ParPass2Son_t
+   PAR_PASS2SON_GENERAL = 1,
+   PAR_PASS2SON_EVOLVE  = 2;
 #endif // #ifdef PARTICLE
 
 
@@ -279,7 +295,7 @@ const OptLohnerForm_t
 
 
 // OPT__1ST_FLUX_CORR and OPT__1ST_FLUX_CORR_SCHEME options
-#if ( MODEL == HYDRO  ||  MODEL == MHD )
+#if ( MODEL == HYDRO )
 typedef int Opt1stFluxCorr_t;
 const Opt1stFluxCorr_t
    FIRST_FLUX_CORR_NONE    = 0,
@@ -290,15 +306,11 @@ typedef int OptRSolver1st_t;
 const OptRSolver1st_t
    RSOLVER_1ST_NONE    = 0
   ,RSOLVER_1ST_ROE     = 1
-#  if ( MODEL == HYDRO )
   ,RSOLVER_1ST_HLLC    = 2
-#  endif
   ,RSOLVER_1ST_HLLE    = 3
-#  if ( MODEL == MHD )
   ,RSOLVER_1ST_HLLD    = 4
-#  endif
   ;
-#endif // #if ( MODEL == HYDRO  ||  MODEL == MHD )
+#endif // #if ( MODEL == HYDRO )
 
 
 // OPT__CORR_AFTER_ALL_SYNC options
@@ -318,16 +330,20 @@ const OptTimeStepLevel_t
    DT_LEVEL_FLEXIBLE  = 3;
 
 
+// AddField() option
+typedef int NormPassive_t;
+const NormPassive_t
+   NORMALIZE_NO  = 0,
+   NORMALIZE_YES = 1;
+
+
+// field types
+typedef int FieldIdx_t;
+
+
 // Grackle
 #ifdef SUPPORT_GRACKLE
-// original Grackle or the reduced CPU/GPU implementation in GAMER
-typedef int GrackleMode_t;
-const GrackleMode_t
-   GRACKLE_MODE_NONE  = 0,
-   GRACKLE_MODE_ORI   = 1,
-   GRACKLE_MODE_GAMER = 2;
-
-// primordial chemistry
+// map to the "primordial_chemistry" option of Grackle
 typedef int GracklePriChe_t;
 const GracklePriChe_t
    GRACKLE_PRI_CHE_CLOUDY = 0,

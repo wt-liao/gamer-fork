@@ -30,10 +30,10 @@ COMPILE_VERBOSE := 0
 
 # (a) physical modules
 # -------------------------------------------------------------------------------
-# physical model: HYDRO/MHD/ELBDM/PAR_ONLY (ELBDM: wave dark matter; PAR_ONLY: particle-only)
+# physical model: HYDRO/ELBDM/PAR_ONLY (ELBDM: wave dark matter; PAR_ONLY: particle-only)
 # --> must be set in any cases; PAR_ONLY is not supported yet;
-#     MHD and ELBDM are not publicly available yet but will be released soon
-SIMU_OPTION += -DMODEL=MHD
+#     ELBDM is not publicly available yet but will be released soon
+SIMU_OPTION += -DMODEL=HYDRO
 
 # enable gravity
 #SIMU_OPTION += -DGRAVITY
@@ -43,6 +43,7 @@ SIMU_OPTION += -DMODEL=MHD
 #SIMU_OPTION += -DPARTICLE
 
 # support Grackle, a chemistry and radiative cooling library
+# --> must set NCOMP_PASSIVE_USER according to the primordial chemistry network set by GRACKLE_PRIMORDIAL
 # --> please enable OpenMP when compiling Grackle (by "make omp-on")
 #SIMU_OPTION += -DSUPPORT_GRACKLE
 
@@ -51,51 +52,35 @@ SIMU_OPTION += -DMODEL=MHD
 # (b-1) hydro options
 # ------------------------------------------------------------------------------------
 ifeq "$(filter -DMODEL=HYDRO, $(SIMU_OPTION))" "-DMODEL=HYDRO"
-# hydrodynamic scheme: RTVD/WAF/MHM/MHM_RP/CTU
-# --> must be set when MODEL=HYDRO; WAF is deprecated
+# hydrodynamic scheme: RTVD/MHM/MHM_RP/CTU
+# --> must be set when MODEL=HYDRO
+# --> MHD only supports MHM_RP and CTU
 SIMU_OPTION += -DFLU_SCHEME=CTU
 
 # scheme of spatial data reconstruction: PLM/PPM (piecewise-linear/piecewise-parabolic)
-# --> useless for RTVD/WAF
+# --> useless for RTVD
 SIMU_OPTION += -DLR_SCHEME=PPM
 
-# Riemann solver: EXACT/ROE/HLLE/HLLC
-# --> all are useless for RTVD; HLLE/HLLC are useless for WAF
+# Riemann solver: EXACT/ROE/HLLE/HLLC/HLLD
+# --> pure hydro: EXACT/ROE/HLLE/HLLC(*); MHD: ROE/HLLE/HLLD(*);
+#     		  (recommended solvers are highlighted by *)
+# --> useless for RTVD
 SIMU_OPTION += -DRSOLVER=ROE
 
 # dual energy formalism: DE_ENPY/DE_EINT (evolve entropy or internal energy)
-# --> DE_EINT is not supported yet; useless for RTVD/WAF
+# --> DE_EINT is not supported yet; useless for RTVD
 #SIMU_OPTION += -DDUAL_ENERGY=DE_ENPY
 
-# number of passively advected scalars (**excluding** entropy or internal energy used by DUAL_ENERGY)
-# --> useless for RTVD/WAF
-# --> for simulations without any passive scalar, either set it to 0 or comment it out
+# number of user-defined passively advected scalars
+# --> set it to 0 or comment it out if none is required
+# --> useless for RTVD
 SIMU_OPTION += -DNCOMP_PASSIVE_USER=0
 
-
-# (b-2) MHD options
-# ------------------------------------------------------------------------------------
-else ifeq "$(filter -DMODEL=MHD, $(SIMU_OPTION))" "-DMODEL=MHD"
-# MHD scheme: MHM_RP/CTU
-# --> must be set when MODEL=MHD
-SIMU_OPTION += -DFLU_SCHEME=CTU
-
-# scheme of spatial data reconstruction: PLM/PPM (piecewise-linear/piecewise-parabolic)
-SIMU_OPTION += -DLR_SCHEME=PPM
-
-# Riemann solver: ROE/HLLE/HLLD
-SIMU_OPTION += -DRSOLVER=ROE
-
-# dual energy formalism: DE_ENPY/DE_EINT (evolve entropy or internal energy)
-# --> DE_EINT is not supported yet
-#SIMU_OPTION += -DDUAL_ENERGY=DE_ENPY
-
-# number of passively advected scalars (**excluding** entropy or internal energy used by DUAL_ENERGY)
-# --> for simulations without any passive scalar, either set it to 0 or comment it out
-SIMU_OPTION += -DNCOMP_PASSIVE_USER=0
+# magnetohydrodynamics
+#SIMU_OPTION += -DMHD
 
 
-# (b-3) ELBDM options
+# (b-2) ELBDM options
 # ------------------------------------------------------------------------------------
 else ifeq "$(filter -DMODEL=ELBDM, $(SIMU_OPTION))" "-DMODEL=ELBDM"
 # enforce the mass conservation
@@ -115,7 +100,7 @@ SIMU_OPTION += -DNCOMP_PASSIVE_USER=0
 endif # MODEL
 
 
-# (b-4) gravity options
+# (b-3) gravity options
 # -------------------------------------------------------------------------------
 ifeq "$(filter -DGRAVITY, $(SIMU_OPTION))" "-DGRAVITY"
 # Poisson solver: SOR/MG (successive-overrelaxation (recommended)/multigrid)
@@ -128,7 +113,7 @@ SIMU_OPTION += -DPOT_SCHEME=SOR
 SIMU_OPTION += -DSTORE_POT_GHOST
 
 # use unsplitting method to couple gravity to the target model (recommended)
-# --> for HYDRO and MHD only; ELBDM is not supported yet
+# --> for HYDRO only; ELBDM is not supported yet
 SIMU_OPTION += -DUNSPLIT_GRAVITY
 
 # comoving frame for cosmological simulations
@@ -137,7 +122,7 @@ SIMU_OPTION += -DUNSPLIT_GRAVITY
 endif # GRAVITY
 
 
-# (b-5) particle options
+# (b-4) particle options
 # ------------------------------------------------------------------------------------
 ifeq "$(filter -DPARTICLE, $(SIMU_OPTION))" "-DPARTICLE"
 # store particle acceleration (recommended)
@@ -147,13 +132,13 @@ SIMU_OPTION += -DSTORE_PAR_ACC
 # --> must turn on STORE_POT_GHOST when STORE_PAR_ACC is adopted
 #SIMU_OPTION += -DSTAR_FORMATION
 
-# number of passive particle attributes (**excluding** PAR_CREATION_TIME used by STAR_FORMATION)
-# --> for simulations without any passive attributes, either set it to 0 or comment it out
-SIMU_OPTION += -DPAR_NPASSIVE_USER=0
+# number of user-defined particle attributes
+# --> set it to 0 or comment it out if none is required
+SIMU_OPTION += -DPAR_NATT_USER=0
 endif # PARTICLE
 
 
-# (d) miscellaneous options (AMR, GPU, parallelization, optimizations, ...)
+# (c) miscellaneous options (AMR, GPU, parallelization, optimizations, ...)
 # ------------------------------------------------------------------------------------
 # maximum number of AMR levels including the root level (level id = 0 ... NLEVEL-1)
 # --> must be set in any cases
@@ -295,6 +280,7 @@ MPI_PATH     :=
 HDF5_PATH    :=
 GRACKLE_PATH :=
 GSL_PATH     :=
+LIBYT_PATH   :=
 
 # NCSA-bluewaters (only need to specify the path of user-installed packages)
 #GRACKLE_PATH :=
@@ -339,11 +325,16 @@ GSL_PATH     :=
 
 # NTU-hulk (openmpi-intel-qlc)
 #CUDA_PATH    := /opt/gpu/cuda/4.2
-#FFTW_PATH    := /opt/math/fftw/2.1.5-intel-qlc
+#FFTW_PATH    := /opt/math/fftw/2.1.5-intel-openmpi-1.4.3-qlc
 #MPI_PATH     := /usr/mpi/intel/openmpi-1.4.3-qlc
-#HDF5_PATH    := /opt/hdf5/1.8.9
+#HDF5_PATH    := /opt/hdf5/1.8.20
 #GRACKLE_PATH := /work1/fish/Software/grackle
-#MPI_PATH     := /opt/mpi/openmpi/1.6.0-intel
+#GSL_PATH     := /opt/math/gsl/2.5
+#LIBYT_PATH   := /project/fish/libyt/libyt
+#FFTW_PATH    := /opt/math/fftw/2.1.5-intel-openmpi-1.6.0-qlc
+#MPI_PATH     := /opt/mpi/openmpi/1.6.0-intel-qlc
+#FFTW_PATH    := /opt/math/fftw/2.1.5-intel-openmpi-2.1.5-qlc
+#MPI_PATH     := /opt/mpi/openmpi/2.1.5-intel-qlc
 #CUDA_PATH    := /usr/local/cuda-7.5
 
 # NTU-hulk (openmpi-gcc-qlc)
@@ -352,6 +343,8 @@ GSL_PATH     :=
 #MPI_PATH     := /usr/mpi/gcc/openmpi-1.4.3-qlc
 #HDF5_PATH    := /opt/hdf5/1.8.9
 #GRACKLE_PATH := /work1/fish/Software/grackle
+#GSL_PATH     := /opt/math/gsl
+#LIBYT_PATH   := /project/fish/libyt/libyt
 #MPI_PATH     := /opt/mpi/openmpi/1.8.1-gcc-qlc
 #CUDA_PATH    := /usr/local/cuda-7.5
 
@@ -360,6 +353,15 @@ GSL_PATH     :=
 #FFTW_PATH    := /ifs/data/hsiyu/Software/fftw/2.1.5-openmpi-1.3.2-intel
 #MPI_PATH     := /usr/mpi/intel/openmpi-1.3.2-qlc
 #GPUID_PATH   := /ifs/data/hsiyu/Software/gpudevmgr
+
+# A "typical" macOS installation without GPU
+#CUDA_PATH    :=
+#FFTW_PATH    := /usr/local/fftw-2.1.5
+#MPI_PATH     := /usr/local/mpich-3.2
+#HDF5_PATH    := ${HOME}/miniconda3
+#GRACKLE_PATH :=
+#GSL_PATH     := /usr/local/gsl-1.16
+
 
 
 
@@ -388,9 +390,9 @@ CC_FILE     += Aux_Check_Parameter.cpp  Aux_Check_Conservation.cpp  Aux_Check.cp
                Aux_Record_User.cpp  Aux_Record_CorrUnphy.cpp  Aux_SwapPointer.cpp  Aux_Check_NormalizePassive.cpp \
                Aux_LoadTable.cpp  Aux_IsFinite.cpp
 
-CC_FILE     += CPU_FluidSolver.cpp  Flu_AdvanceDt.cpp  Flu_Prepare.cpp  Flu_Close.cpp  Flu_FixUp.cpp \
-               Flu_Restrict.cpp  Flu_AllocateFluxArray.cpp  Flu_BoundaryCondition_User.cpp  Flu_ResetByUser.cpp \
-               Flu_CorrAfterAllSync.cpp  Flu_SwapFluxPointer.cpp  Flu_BoundaryCondition_Outflow.cpp
+CC_FILE     += CPU_FluidSolver.cpp  Flu_AdvanceDt.cpp  Flu_Prepare.cpp  Flu_Close.cpp  Flu_FixUp_Flux.cpp \
+               Flu_FixUp_Restrict.cpp  Flu_AllocateFluxArray.cpp  Flu_BoundaryCondition_User.cpp  Flu_ResetByUser.cpp \
+               Flu_CorrAfterAllSync.cpp  Flu_ManageFixUpTempArray.cpp
 
 CC_FILE     += End_GAMER.cpp  End_MemFree.cpp  End_MemFree_Fluid.cpp  End_StopManually.cpp  End_User.cpp \
                Init_BaseLevel.cpp  Init_GAMER.cpp  Init_Load_DumpTable.cpp \
@@ -398,7 +400,7 @@ CC_FILE     += End_GAMER.cpp  End_MemFree.cpp  End_MemFree_Fluid.cpp  End_StopMa
                Init_MemAllocate_Fluid.cpp  Init_Parallelization.cpp  Init_RecordBasePatch.cpp  Init_Refine.cpp \
                Init_ByRestart_v1.cpp  Init_ByFunction.cpp  Init_TestProb.cpp  Init_ByFile.cpp  Init_OpenMP.cpp \
                Init_ByRestart_HDF5.cpp  Init_ResetParameter.cpp  Init_ByRestart_v2.cpp  Init_MemoryPool.cpp \
-               Init_Unit.cpp  Init_PassiveVariable.cpp  Init_UniformGrid.cpp
+               Init_Unit.cpp  Init_UniformGrid.cpp  Init_Field.cpp  Init_User.cpp
 
 CC_FILE     += Interpolate.cpp  Int_CQuadratic.cpp  Int_MinMod1D.cpp  Int_MinMod3D.cpp  Int_vanLeer.cpp \
                Int_Quadratic.cpp  Int_Table.cpp  Int_CQuartic.cpp  Int_Quartic.cpp
@@ -417,26 +419,25 @@ CC_FILE     += Flag_Real.cpp  Refine.cpp   SiblingSearch.cpp  SiblingSearch_Base
                Flag_User.cpp  Flag_Check.cpp  Flag_Lohner.cpp  Flag_Region.cpp
 
 CC_FILE     += Table_01.cpp  Table_02.cpp  Table_03.cpp  Table_04.cpp  Table_05.cpp  Table_06.cpp \
-               Table_07.cpp
+               Table_07.cpp  Table_SiblingSharingSameEdge.cpp
 
 vpath %.cu     GPU_API
-vpath %.cpp    GAMER  Init  Refine  Fluid  Interpolation  Tables  Output  Miscellaneous  Auxiliary
+vpath %.cpp    Main  Init  Refine  Fluid  Interpolation  Tables  Output  Miscellaneous  Auxiliary
 
 
 # hydrodynamic source files (included only if "MODEL=HYDRO")
 # ------------------------------------------------------------------------------------
 ifeq "$(filter -DMODEL=HYDRO, $(SIMU_OPTION))" "-DMODEL=HYDRO"
-CUDA_FILE   += CUFLU_dtSolver_HydroCFL.cu  CUFLU_FluidSolver_RTVD.cu  CUFLU_FluidSolver_WAF.cu  CUFLU_FluidSolver_MHM.cu \
-               CUFLU_FluidSolver_CTU.cu
+CUDA_FILE   += CUFLU_dtSolver_HydroCFL.cu  CUFLU_FluidSolver_RTVD.cu  CUFLU_FluidSolver_MHM.cu  CUFLU_FluidSolver_CTU.cu
 
-CC_FILE     += CPU_FluidSolver_RTVD.cpp  CPU_FluidSolver_WAF.cpp  CPU_FluidSolver_MHM.cpp  CPU_FluidSolver_CTU.cpp \
+CC_FILE     += CPU_FluidSolver_RTVD.cpp  CPU_FluidSolver_MHM.cpp  CPU_FluidSolver_CTU.cpp \
                CPU_Shared_DataReconstruction.cpp  CPU_Shared_FluUtility.cpp  CPU_Shared_ComputeFlux.cpp \
                CPU_Shared_FullStepUpdate.cpp  CPU_Shared_RiemannSolver_Exact.cpp  CPU_Shared_RiemannSolver_Roe.cpp \
                CPU_Shared_RiemannSolver_HLLE.cpp  CPU_Shared_RiemannSolver_HLLC.cpp  CPU_Shared_DualEnergy.cpp \
                CPU_dtSolver_HydroCFL.cpp
 
 CC_FILE     += Hydro_Init_ByFunction_AssignData.cpp  Hydro_Aux_Check_Negative.cpp \
-               Hydro_BoundaryCondition_Reflecting.cpp  Hydro_Flag_Vorticity.cpp
+               Hydro_BoundaryCondition_Reflecting.cpp  Hydro_BoundaryCondition_Outflow.cpp
 
 vpath %.cu     Model_Hydro/GPU_Hydro
 vpath %.cpp    Model_Hydro/CPU_Hydro  Model_Hydro
@@ -450,32 +451,21 @@ vpath %.cu     Model_Hydro/GPU_HydroGravity
 vpath %.cpp    Model_Hydro/CPU_HydroGravity
 endif
 
+ifeq "$(filter -DMHD, $(SIMU_OPTION))" "-DMHD"
+#CUDA_FILE   +=
 
-# MHD source files (included only if "MODEL=MHD")
-# -------------------------------------------------------------------------------
-else ifeq "$(filter -DMODEL=MHD, $(SIMU_OPTION))" "-DMODEL=MHD"
-#CUDA_FILE   += CUFLU_dtSolver_MHDCFL.cu  CUFLU_FluidSolver_MHM.cu  CUFLU_FluidSolver_CTU.cu
+CC_FILE     += MHD_GetCellCenteredBInPatch.cpp  MHD_InterpolateBField.cpp  MHD_AllocateElectricArray.cpp \
+               MHD_Aux_Check_InterfaceB.cpp  MHD_FixUp_Electric.cpp  MHD_Aux_Check_DivergenceB.cpp \
+               MHD_BoundaryCondition_Outflow.cpp  MHD_BoundaryCondition_Reflecting.cpp  MHD_BoundaryCondition_User.cpp \
+               MHD_CopyPatchInterfaceBField.cpp MHD_Init_BField_ByFile.cpp
 
-CC_FILE     += CPU_Shared_RiemannSolver_Roe.cpp  CPU_Shared_RiemannSolver_HLLE.cpp  CPU_Shared_FluUtility.cpp
-#CC_FILE     += CPU_FluidSolver_MHM.cpp  CPU_FluidSolver_CTU.cpp  CPU_Shared_DataReconstruction.cpp \
-#               CPU_Shared_ComputeFlux.cpp  CPU_dtSolver_MHDCFL.cpp \
-#               CPU_Shared_FullStepUpdate.cpp  CPU_Shared_RiemannSolver_Exact.cpp  \
-#               CPU_Shared_RiemannSolver_HLLD.cpp  CPU_Shared_DualEnergy.cpp \
+CC_FILE     += CPU_Shared_ConstrainedTransport.cpp  CPU_Shared_RiemannSolver_HLLD.cpp
 
-CC_FILE     += MHD_Init_ByFunction_AssignData.cpp  MHD_GetCellCenteredB.cpp
-#CC_FILE     += Hydro_Aux_Check_Negative.cpp  MHD_BoundaryCondition_Reflecting.cpp
-
-vpath %.cu     Model_MHD/GPU_MHD
-vpath %.cpp    Model_MHD/CPU_MHD  Model_MHD
-
-ifeq "$(filter -DGRAVITY, $(SIMU_OPTION))" "-DGRAVITY"
-#CUDA_FILE   += CUPOT_MHDGravitySolver.cu  CUPOT_dtSolver_MHDGravity.cu
-
-#CC_FILE     += CPU_MHDGravitySolver.cpp  CPU_dtSolver_MHDGravity.cpp
-
-vpath %.cu     Model_MHD/GPU_MHDGravity
-vpath %.cpp    Model_MHD/CPU_MHDGravity
-endif
+ifeq "$(findstring -DLOAD_BALANCE, $(SIMU_OPTION))" "-DLOAD_BALANCE"
+CC_FILE     += MHD_LB_EnsureBFieldConsistencyAfterRestrict.cpp  MHD_LB_AllocateElectricArray.cpp \
+               MHD_LB_ResetBufferElectric.cpp  MHD_LB_Refine_GetCoarseFineInterfaceBField.cpp
+endif # LOAD_BALANCE
+endif # MHD
 
 
 # ELBDM source files (included only inf "MODEL=ELBDM")
@@ -520,7 +510,8 @@ CC_FILE     += Init_FFTW.cpp  Gra_Close.cpp  Gra_Prepare_Flu.cpp  Gra_Prepare_Po
                End_MemFree_PoissonGravity.cpp  Init_Set_Default_SOR_Parameter.cpp \
                Init_Set_Default_MG_Parameter.cpp  Poi_GetAverageDensity.cpp  Init_GreenFuncK.cpp \
                Init_ExternalPot.cpp  Poi_BoundaryCondition_Extrapolation.cpp  CPU_ExternalAcc.cpp \
-               Gra_Prepare_USG.cpp  Init_ExternalAcc.cpp  Poi_StorePotWithGhostZone.cpp  Init_ExternalAccPot.cpp
+               Gra_Prepare_USG.cpp  Init_ExternalAcc.cpp  Poi_StorePotWithGhostZone.cpp  Init_ExternalAccPot.cpp \
+               Poi_AddExtraMassForGravity.cpp
 
 vpath %.cu     SelfGravity/GPU_Poisson  SelfGravity/GPU_Gravity
 vpath %.cpp    SelfGravity/CPU_Poisson  SelfGravity/CPU_Gravity  SelfGravity
@@ -532,12 +523,13 @@ endif # GRAVITY
 ifeq "$(filter -DPARTICLE, $(SIMU_OPTION))" "-DPARTICLE"
 CUDA_FILE   +=
 
-CC_FILE     += Par_Init_ByFunction.cpp  Par_Output_TextFile.cpp  Par_FindHomePatch_UniformGrid.cpp  Par_PassParticle2Son.cpp \
+CC_FILE     += Par_Init_ByFunction.cpp  Par_Output_TextFile.cpp  Par_FindHomePatch_UniformGrid.cpp \
                Par_Aux_Check_Particle.cpp  Par_PassParticle2Father.cpp  Par_CollectParticle2OneLevel.cpp \
                Par_MassAssignment.cpp  Par_UpdateParticle.cpp  Par_GetTimeStep_VelAcc.cpp \
                Par_PassParticle2Sibling.cpp  Par_CountParticleInDescendant.cpp  Par_Aux_GetConservedQuantity.cpp \
-               Par_Aux_InitCheck.cpp  Par_Aux_Record_ParticleCount.cpp  Par_PassParticle2Son_AllPatch.cpp \
-               Par_Synchronize.cpp  Par_PredictPos.cpp  Par_Init_ByFile.cpp
+               Par_Aux_InitCheck.cpp  Par_Aux_Record_ParticleCount.cpp  Par_PassParticle2Son_MultiPatch.cpp \
+               Par_Synchronize.cpp  Par_PredictPos.cpp  Par_Init_ByFile.cpp  Par_Init_Attribute.cpp \
+               Par_AddParticleAfterInit.cpp  Par_PassParticle2Son_SinglePatch.cpp
 
 vpath %.cu     Particle/GPU
 vpath %.cpp    Particle/CPU  Particle
@@ -546,7 +538,7 @@ ifeq "$(findstring -DLOAD_BALANCE, $(SIMU_OPTION))" "-DLOAD_BALANCE"
 CC_FILE     += Par_LB_SendParticleData.cpp  Par_LB_CollectParticle2OneLevel.cpp \
                Par_LB_CollectParticleFromRealPatch.cpp  Par_LB_RecordExchangeParticlePatchID.cpp \
                Par_LB_MapBuffer2RealPatch.cpp  Par_LB_ExchangeParticleBetweenPatch.cpp \
-               Par_LB_Refine_SendParticle2Father.cpp  Par_LB_Refine_SendParticle2Son.cpp
+               Par_LB_Refine_SendParticle2Father.cpp
 
 vpath %.cpp    Particle/LoadBalance
 endif # LOAD_BALANCE
@@ -610,9 +602,7 @@ endif # SUPPORT_LIBYT
 # Grackle source files (included only if "SUPPORT_GRACKLE" is turned on)
 # ------------------------------------------------------------------------------------
 ifeq "$(filter -DSUPPORT_GRACKLE, $(SIMU_OPTION))" "-DSUPPORT_GRACKLE"
-CUDA_FILE   += CUAPI_MemAllocate_Grackle.cu  CUAPI_MemFree_Grackle.cu
-
-CC_FILE     += CPU_GrackleSolver_Original.cpp
+CC_FILE     += CPU_GrackleSolver.cpp
 
 CC_FILE     += Grackle_Init.cpp  Grackle_End.cpp  Init_MemAllocate_Grackle.cpp  End_MemFree_Grackle.cpp \
                Grackle_Prepare.cpp  Grackle_Close.cpp  Grackle_Init_FieldData.cpp  Grackle_AdvanceDt.cpp
@@ -868,7 +858,7 @@ else
 		printf "\nCompiling GAMER --> Failed!\n\n"; \
 	fi)
 endif
-	@rm ./*.linkinfo -f
+	@rm -f ./*.linkinfo
 
 
 # clean
@@ -877,7 +867,7 @@ endif
 clean :
 	@rm -f $(OBJ_PATH)/*
 	@rm -f $(EXECUTABLE)
-	@rm ./*.linkinfo -f
+	@rm -f ./*.linkinfo
 
 
 
