@@ -44,7 +44,9 @@ void CPU_FluidSolver_MHM(
    const double Time, const OptGravityType_t GravityType,
    const double c_ExtAcc_AuxArray[], const real MinDens, const real MinPres,
    const real DualEnergySwitch, const bool NormPassive, const int NNorm, const int c_NormIdx[],
-   const bool JeansMinPres, const real JeansMinPres_Coeff );
+   const bool JeansMinPres, const real JeansMinPres_Coeff, 
+   const double H2_Op_T_Table[], const double H2_Op_Alpha_Table[], 
+   const int H2_Op_N_elem, const real Unit_Dens );
 #elif ( FLU_SCHEME == CTU )
 void CPU_FluidSolver_CTU(
    const real   g_Flu_Array_In [][NCOMP_TOTAL][ CUBE(FLU_NXT) ],
@@ -170,7 +172,9 @@ void CPU_FluidSolver( real h_Flu_Array_In[][FLU_NIN][ CUBE(FLU_NXT) ],
                       const double Time, const OptGravityType_t GravityType,
                       const real MinDens, const real MinPres, const real DualEnergySwitch,
                       const bool NormPassive, const int NNorm, const int NormIdx[],
-                      const bool JeansMinPres, const real JeansMinPres_Coeff )
+                      const bool JeansMinPres, const real JeansMinPres_Coeff, 
+                      const double H2_Op_T_Table[], const double H2_Op_Alpha_Table[], 
+                      const int H2_Op_N_elem, const real Unit_Dens )
 {
 
 // check
@@ -210,7 +214,9 @@ void CPU_FluidSolver( real h_Flu_Array_In[][FLU_NIN][ CUBE(FLU_NXT) ],
                             h_PriVar, h_Slope_PPM, h_FC_Var, h_FC_Flux, h_FC_Mag_Half, h_EC_Ele,
                             NPatchGroup, dt, dh, Gamma, StoreFlux, StoreElectric, LR_Limiter, MinMod_Coeff, Time,
                             GravityType, ExtAcc_AuxArray, MinDens, MinPres, DualEnergySwitch,
-                            NormPassive, NNorm, NormIdx, JeansMinPres, JeansMinPres_Coeff );
+                            NormPassive, NNorm, NormIdx, JeansMinPres, JeansMinPres_Coeff,
+                            H2_Op_T_Table, H2_Op_Alpha_Table, H2_Op_N_elem, Unit_Dens );
+
 
 #     elif ( FLU_SCHEME == CTU )
 

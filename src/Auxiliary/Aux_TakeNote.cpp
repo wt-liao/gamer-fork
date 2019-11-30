@@ -669,6 +669,7 @@ void Aux_TakeNote()
 //    record the parameters of time-step determination
       fprintf( Note, "Parameters of Time-step Determination\n" );
       fprintf( Note, "***********************************************************************************\n" );
+      fprintf( Note, "DT__MAX                        %14.7e\n",   DT__MAX                   );
       fprintf( Note, "DT__FLUID                       %13.7e\n",  DT__FLUID                 );
       fprintf( Note, "DT__FLUID_INIT                  %13.7e\n",  DT__FLUID_INIT            );
 #     ifdef GRAVITY
@@ -784,6 +785,9 @@ void Aux_TakeNote()
       fprintf( Note, "GRACKLE_PE_HEATING              %d\n",      GRACKLE_PE_HEATING      );
       fprintf( Note, "GRACKLE_PE_HEATING_RATE         %13.7e\n",  GRACKLE_PE_HEATING_RATE );
       fprintf( Note, "GRACKLE_CLOUDY_TABLE            %s\n",      GRACKLE_CLOUDY_TABLE    );
+      fprintf( Note, "GRACKLE_THREE_BODY_RATE         %d\n",      GRACKLE_THREE_BODY_RATE );
+      fprintf( Note, "GRACKLE_CIE_COOLING             %d\n",      GRACKLE_CIE_COOLING     );
+      fprintf( Note, "GRACKLE_H2_OPA_APPROX           %d\n",      GRACKLE_H2_OPA_APPROX   );
       fprintf( Note, "CHE_GPU_NPGROUP                 %d\n",      CHE_GPU_NPGROUP         ); }
       fprintf( Note, "***********************************************************************************\n" );
       fprintf( Note, "\n\n");

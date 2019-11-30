@@ -494,6 +494,15 @@ void Solver( const Solver_t TSolver, const int lv, const double TimeNew, const d
    const real JEANS_MIN_PRES     = false;
    const real JeansMinPres_Coeff = NULL_REAL;
 #  endif
+   
+#  if (defined SUPPORT_GRACKLE) && (defined GRACKLE_H2_SOBOLEV)
+   const double Unit_Dens          = Che_Units.density_units;
+#  else
+   const double Unit_Dens          = NULL_REAL;
+   const int    H2_Op_N_elem       = NULL_INT ;
+   const double *H2_Op_T_Table     = NULL;
+   const double *H2_Op_Alpha_Table = NULL;
+#  endif
 
 
    switch ( TSolver )
@@ -517,7 +526,8 @@ void Solver( const Solver_t TSolver, const int lv, const double TimeNew, const d
                                  NPG, dt, dh, GAMMA, OPT__FIXUP_FLUX, OPT__FIXUP_ELECTRIC, Flu_XYZ, OPT__LR_LIMITER, MINMOD_COEFF,
                                  ELBDM_ETA, ELBDM_TAYLOR3_COEFF, ELBDM_TAYLOR3_AUTO,
                                  TimeOld, OPT__GRAVITY_TYPE, MIN_DENS, MIN_PRES, DUAL_ENERGY_SWITCH,
-                                 OPT__NORMALIZE_PASSIVE, PassiveNorm_NVar, PassiveNorm_VarIdx, JEANS_MIN_PRES, JeansMinPres_Coeff );
+                                 OPT__NORMALIZE_PASSIVE, PassiveNorm_NVar, PassiveNorm_VarIdx, JEANS_MIN_PRES, JeansMinPres_Coeff,
+                                 H2_Op_T_Table, H2_Op_Alpha_Table, H2_Op_N_elem, Unit_Dens );
 #        endif
       break;
 

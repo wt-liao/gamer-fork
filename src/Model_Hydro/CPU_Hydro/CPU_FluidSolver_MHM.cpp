@@ -107,7 +107,15 @@ static void Hydro_RiemannPredict( const real g_ConVar_In[][ CUBE(FLU_NXT) ],
                                   const real dt, const real dh, const real Gamma, const real MinDens, const real MinPres,
                                   const bool NormPassive, const int NNorm, const int NormIdx[],
                                   const bool JeansMinPres, const real JeansMinPres_Coeff );
+                                  
+#if (defined SUPPORT_GRACKLE) && (defined GRACKLE_H2_SOBOLEV)
+GPU_DEVICE
+static void Hydro_H2_Opacity(const real g_Half_PriVar[][ CUBE(FLU_NXT) ], real g_Output[][ CUBE(PS2) ],
+                             const double H2_Op_T_Table[], const double H2_Op_Alpha_Table[],
+                             const int H2_Op_N_elem, const real dh, const real Gamma, const real Unit_Dens );
 #endif
+                             
+#endif // MHM_RP
 
 
 
@@ -223,7 +231,9 @@ void CPU_FluidSolver_MHM(
    const double Time, const OptGravityType_t GravityType,
    const double c_ExtAcc_AuxArray[], const real MinDens, const real MinPres,
    const real DualEnergySwitch, const bool NormPassive, const int NNorm, const int c_NormIdx[],
-   const bool JeansMinPres, const real JeansMinPres_Coeff )
+   const bool JeansMinPres, const real JeansMinPres_Coeff, 
+   const double H2_Op_T_Table[], const double H2_Op_Alpha_Table[], 
+   const int H2_Op_N_elem, const real Unit_Dens )
 #endif // #ifdef __CUDACC__ ... else ...
 {
 
@@ -402,6 +412,11 @@ void CPU_FluidSolver_MHM(
          Hydro_FullStepUpdate( g_Flu_Array_In[P], g_Flu_Array_Out[P], g_DE_Array_Out[P], g_Mag_Array_Out[P],
                                g_FC_Flux_1PG, dt, dh, Gamma, MinDens, MinPres, DualEnergySwitch,
                                NormPassive, NNorm, c_NormIdx );
+                               
+#        if ( FLU_SCHEME == MHM_RP ) && (defined SUPPORT_GRACKLE) && (defined GRACKLE_H2_SOBOLEV)
+         Hydro_H2_Opacity(g_Half_Var_1PG, g_Flu_Array_Out[P], H2_Op_T_Table, H2_Op_Alpha_Table, 
+                          H2_Op_N_elem, dh, Gamma, Unit_Dens);
+#        endif 
 
       } // loop over all patch groups
    } // OpenMP parallel region
@@ -685,5 +700,149 @@ void Hydro_RiemannPredict( const real g_ConVar_In[][ CUBE(FLU_NXT) ],
 #endif // #if ( FLU_SCHEME == MHM_RP )
 
 
+#if (FLU_SCHEME == MHM_RP) && (defined SUPPORT_GRACKLE) && (defined GRACKLE_H2_SOBOLEV)
+//-------------------------------------------------------------------------------------------------------
+// Function    :  Hydro_H2_Opacity
+// Description :  ###Evolve the cell-centered variables by half time-step using the fluxes returned
+//                by Hydro_RiemannPredict_Flux()
+//
+// Note        :  ##1. Work for the MHM_RP scheme
+//                ##2. For the performance consideration, the output data are converted to primitive variables
+//                   --> Reducing the global memory access on GPU
+//
+// Parameter   :  ##g_ConVar_In        : Array storing the input conserved variables
+//                ##g_Half_Flux        : Array storing the input face-centered fluxes
+//                                     --> Accessed with the stride N_FC_FLUX
+//                ##g_Half_Var         : Array to store the output primitive variables
+
+//-------------------------------------------------------------------------------------------------------
+GPU_DEVICE
+void Hydro_H2_Opacity(const real g_Half_PriVar[][ CUBE(FLU_NXT) ], real g_Output[][ CUBE(PS2) ],
+                      const double H2_Op_T_Table[], const double H2_Op_Alpha_Table[],
+                      const int H2_Op_N_elem, const real dh, const real Gamma, const real Unit_Dens ){
+                         
+   real dens, _dens, pres, kbT, lnkbT, cs;
+   real rho_HI, rho_HII, rho_H2I, rho_HeI, rho_e;
+   real n_HI, n_HII, n_H2I, n_HeI, n_e, n_tot, mu;
+   real alpha, dvx_dx, dvy_dy, dvz_dz, tau_x, tau_y, tau_z; 
+   int Idx, ID_iL, ID_iR, ID_jL, ID_jR, ID_kL, ID_kR ;
+   
+   const double m_H           = (real)1.672621898e-24;
+   const double _m_H          = (real)1.0/m_H;
+   const double _m_2H         = _m_H / (real)2.0;
+   const double _m_4H         = _m_H / (real)4.0;
+
+   const double _2dh          = (real)0.5/dh ;
+   const double Gamma_m1      = Gamma - (real)1.0;
+   const double _Gamma_m1     = (real)1.0 / Gamma_m1; 
+   
+   const double Grackle_lnT_Start = H2_Op_T_Table[0];
+   const double Grackle_dlnT      = H2_Op_T_Table[1] - H2_Op_T_Table[0];
+   const double  _Grackle_dlnT    = (real)1.0 / Grackle_dlnT ; 
+   
+   const double* Alpha_Table = H2_Op_Alpha_Table; 
+   const double* T_Table     = H2_Op_T_Table ; 
+   
+   const int Ghost_Size = (N_HF_VAR - PS2)/2 ;
+
+#  ifdef DUAL_ENERGY
+   const bool CheckMinPres_Yes = true; 
+#  endif
+   
+   const int size_ij = SQR(PS2);
+   CGPU_LOOP( idx_out, CUBE(PS2) )
+   {
+      const int i_out    = idx_out % PS2;
+      const int j_out    = idx_out % size_ij / PS2;
+      const int k_out    = idx_out / size_ij;
+      const int idx_op   = IDX321( i_out, j_out, k_out, PS2, PS2 );
+
+      const int i_in     = i_out + Ghost_Size;
+      const int j_in     = j_out + Ghost_Size;
+      const int k_in     = k_out + Ghost_Size;
+      const int idx_in   = IDX321( i_in, j_in, k_in, N_HF_VAR, N_HF_VAR );
+      
+      // 1.0 get mean moleculat weight mu:
+      //     mu    = Sum(rho_HI + rho_HII + rho_H2 + rho_HeI) / (m_H*n_tot)
+      //     n_tot = Sum(n_HI + n_HII + n_H2 + n_HeI + n_e)
+      rho_HI  = g_Half_PriVar[Idx_HI ][idx_in] * Unit_Dens;
+      rho_HII = g_Half_PriVar[Idx_HII][idx_in] * Unit_Dens;
+      rho_H2I = g_Half_PriVar[Idx_H2I][idx_in] * Unit_Dens;
+      rho_HeI = g_Half_PriVar[Idx_HeI][idx_in] * Unit_Dens;
+      rho_e   = g_Half_PriVar[Idx_e  ][idx_in] * Unit_Dens;
+      
+      n_HI    = rho_HI  * _m_H ;
+      n_HII   = rho_HII * _m_H ;
+      n_H2I   = rho_H2I * _m_2H;
+      n_HeI   = rho_HeI * _m_4H;
+      n_e     = rho_e   * _m_H ;
+      n_tot   = n_HI+n_HII+n_H2I+n_HeI+n_e;
+      
+      mu      = (rho_HI+rho_HII+rho_H2I+rho_HeI)/(m_H*n_tot);
+      
+      // 2.0 get half step physical variables
+#     ifndef DUAL_ENERGY
+      pres  = g_Half_PriVar[ENGY][idx_in];
+#     else
+      pres  = Hydro_DensEntropy2Pres(g_Half_PriVar[DENS][idx_in], g_Half_PriVar[ENPY][idx_in], 
+                                     Gamma_m1, CheckMinPres_Yes, MIN_PRES);
+#     endif
+                                     
+      dens  = g_Half_PriVar[DENS][idx_in];
+      _dens = (real)1.0 / dens;
+      kbT   = pres * _dens * mu; // kbT -> dimensionless (kb*T)/(m_H)
+      lnkbT = LOG(kbT); 
+      cs    = SQRT( Gamma*pres*_dens) ;
+      
+      
+      // 3.0 get alpha 
+      // get T_idx corresponding to table & interpolate
+      Idx = int( (lnkbT-Grackle_lnT_Start)*_Grackle_dlnT ) ; 
+      
+      if (Idx<0)                        { alpha = Alpha_Table[0]; }
+      else if (Idx >= (H2_Op_N_elem-1)) { alpha = Alpha_Table[H2_Op_N_elem-1]; } 
+      else {
+         alpha  = Alpha_Table[Idx] + 
+                  (Alpha_Table[Idx+1]-Alpha_Table[Idx]) * ( (lnkbT-T_Table[Idx]) * _Grackle_dlnT ); 
+      }
+      
+      // 4.0 get velocity gradient
+      ID_iL = IDX321( i_in-1, j_in,   k_in,   N_HF_VAR, N_HF_VAR );
+      ID_iR = IDX321( i_in+1, j_in,   k_in,   N_HF_VAR, N_HF_VAR );
+      ID_jL = IDX321( i_in,   j_in-1, k_in,   N_HF_VAR, N_HF_VAR );
+      ID_jR = IDX321( i_in,   j_in+1, k_in,   N_HF_VAR, N_HF_VAR );
+      ID_kL = IDX321( i_in,   j_in,   k_in-1, N_HF_VAR, N_HF_VAR );
+      ID_kR = IDX321( i_in,   j_in,   k_in+1, N_HF_VAR, N_HF_VAR );
+      
+      // calculate velocity gradient
+      dvx_dx = (g_Half_PriVar[MOMX][ID_iR] - g_Half_PriVar[MOMX][ID_iL]) * _2dh;
+      dvy_dy = (g_Half_PriVar[MOMY][ID_jR] - g_Half_PriVar[MOMY][ID_jL]) * _2dh;
+      dvz_dz = (g_Half_PriVar[MOMZ][ID_kR] - g_Half_PriVar[MOMZ][ID_kL]) * _2dh;
+      
+      // 5.0 calculate tau
+      tau_x = alpha* FABS(cs/dvx_dx); 
+      tau_y = alpha* FABS(cs/dvy_dy);
+      tau_z = alpha* FABS(cs/dvz_dz);
+      
+      // 6.0 store variables: alpha and tau
+      // note: real tau = (tau*length_unit) * n_H2 <- do this in grackle
+      g_Output[Idx_alpha ][idx_out] = alpha; 
+      g_Output[Idx_OpTauX][idx_out] = tau_x;
+      g_Output[Idx_OpTauY][idx_out] = tau_y;
+      g_Output[Idx_OpTauZ][idx_out] = tau_z;
+
+      
+      //### if tau is very small, it might become difficult to calculate beta
+      //### check this in grackle
+      
+   } // CGPU_LOOP
+   
+#  ifdef __CUDACC__
+   __syncthreads();
+#  endif
+   
+} // FUNCTION: Hydro_H2_Opacity
+
+#endif // (FLU_SCHEME == MHM_RP) && (defined SUPPORT_GRACKLE) && (defined GRACKLE_H2_SOBOLEV)
 
 #endif // #if (  MODEL == HYDRO  &&  ( FLU_SCHEME == MHM || FLU_SCHEME == MHM_RP )  )

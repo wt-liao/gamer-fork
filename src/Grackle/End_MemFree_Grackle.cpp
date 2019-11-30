@@ -26,6 +26,20 @@ void End_MemFree_Grackle()
       if ( h_Che_Array[t] != NULL )    delete [] h_Che_Array[t];
       h_Che_Array[t] = NULL;
    }
+   
+#  ifdef GRACKLE_H2_SOBOLEV
+   
+   if (H2_Op_T_Table != NULL) {
+      delete [] H2_Op_T_Table;
+      H2_Op_T_Table = NULL;
+   }
+   
+   if (H2_Op_Alpha_Table != NULL) {
+      delete [] H2_Op_Alpha_Table;
+      H2_Op_Alpha_Table = NULL;
+   }
+   
+#  endif
 
 } // FUNCTION : End_MemFree_Grackle
 

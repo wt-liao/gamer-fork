@@ -63,7 +63,12 @@ void Init_GAMER( int *argc, char ***argv )
 
 // initialize Grackle
 #  ifdef SUPPORT_GRACKLE
-   if ( GRACKLE_ACTIVATE )    Grackle_Init();
+   if ( GRACKLE_ACTIVATE ) {
+      Grackle_Init();
+#     ifdef GRACKLE_H2_SOBOLEV
+      Grackle_Init_Alpha_Table();
+#     endif
+   }    
 #  endif
 
 

@@ -1911,6 +1911,7 @@ void FillIn_InputPara( InputPara_t &InputPara )
 #  endif
 
 // time-step determination
+   InputPara.Dt__Max                 = DT__MAX;
    InputPara.Dt__Fluid               = DT__FLUID;
    InputPara.Dt__FluidInit           = DT__FLUID_INIT;
 #  ifdef GRAVITY
@@ -2079,6 +2080,9 @@ void FillIn_InputPara( InputPara_t &InputPara )
    InputPara.Grackle_PE_Heating      = GRACKLE_PE_HEATING;
    InputPara.Grackle_PE_HeatingRate  = GRACKLE_PE_HEATING_RATE;
    InputPara.Grackle_CloudyTable     = GRACKLE_CLOUDY_TABLE;
+   InputPara.Grackle_ThreeBodyRate   = GRACKLE_THREE_BODY_RATE;
+   InputPara.Grackle_CIE_Cooling     = GRACKLE_CIE_COOLING;
+   InputPara.Grackle_H2_OpaApprox    = GRACKLE_H2_OPA_APPROX;
    InputPara.Che_GPU_NPGroup         = CHE_GPU_NPGROUP;
 #  endif
 
@@ -2625,6 +2629,7 @@ void GetCompound_InputPara( hid_t &H5_TypeID )
 #  endif
 
 // time-step determination
+   H5Tinsert( H5_TypeID, "Dt__Max",                 HOFFSET(InputPara_t,Dt__Max                ), H5T_NATIVE_DOUBLE  );
    H5Tinsert( H5_TypeID, "Dt__Fluid",               HOFFSET(InputPara_t,Dt__Fluid              ), H5T_NATIVE_DOUBLE  );
    H5Tinsert( H5_TypeID, "Dt__FluidInit",           HOFFSET(InputPara_t,Dt__FluidInit          ), H5T_NATIVE_DOUBLE  );
 #  ifdef GRAVITY
@@ -2806,6 +2811,9 @@ void GetCompound_InputPara( hid_t &H5_TypeID )
    H5Tinsert( H5_TypeID, "Grackle_PE_Heating",      HOFFSET(InputPara_t,Grackle_PE_Heating     ), H5T_NATIVE_INT     );
    H5Tinsert( H5_TypeID, "Grackle_PE_HeatingRate",  HOFFSET(InputPara_t,Grackle_PE_HeatingRate ), H5T_NATIVE_DOUBLE  );
    H5Tinsert( H5_TypeID, "Grackle_CloudyTable",     HOFFSET(InputPara_t,Grackle_CloudyTable    ), H5_TypeID_VarStr   );
+   H5Tinsert( H5_TypeID, "Grackle_ThreeBodyRate",   HOFFSET(InputPara_t,Grackle_ThreeBodyRate  ), H5T_NATIVE_INT     );
+   H5Tinsert( H5_TypeID, "Grackle_CIE_Cooling",     HOFFSET(InputPara_t,Grackle_CIE_Cooling    ), H5T_NATIVE_INT     );
+   H5Tinsert( H5_TypeID, "Grackle_H2_OpaApprox",    HOFFSET(InputPara_t,Grackle_H2_OpaApprox   ), H5T_NATIVE_INT     );
    H5Tinsert( H5_TypeID, "Che_GPU_NPGroup",         HOFFSET(InputPara_t,Che_GPU_NPGroup        ), H5T_NATIVE_INT     );
 #  endif
 

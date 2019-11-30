@@ -41,7 +41,7 @@ int                  MPI_Rank, MPI_Rank_X[3], MPI_SibRank[26], NX0[3], NPatchTot
 int                 *BaseP = NULL;
 int                  Flu_ParaBuf;
 
-double               BOX_SIZE, DT__FLUID, DT__FLUID_INIT, END_T, OUTPUT_DT, DT__SYNC_PARENT_LV, DT__SYNC_CHILDREN_LV;
+double               BOX_SIZE, DT__MAX, DT__FLUID, DT__FLUID_INIT, END_T, OUTPUT_DT, DT__SYNC_PARENT_LV, DT__SYNC_CHILDREN_LV;
 long                 END_STEP;
 int                  NX0_TOT[3], OUTPUT_STEP, REGRID_COUNT, FLU_GPU_NPGROUP, OMP_NTHREAD;
 int                  MPI_NRank, MPI_NRank_X[3];
@@ -51,6 +51,7 @@ IntScheme_t          OPT__FLU_INT_SCHEME, OPT__REF_FLU_INT_SCHEME;
 double               OUTPUT_PART_X, OUTPUT_PART_Y, OUTPUT_PART_Z, AUTO_REDUCE_DT_FACTOR, AUTO_REDUCE_DT_FACTOR_MIN;
 double               OPT__CK_MEMFREE, INT_MONO_COEFF, UNIT_L, UNIT_M, UNIT_T, UNIT_V, UNIT_D, UNIT_E, UNIT_P;
 int                  OPT__UM_IC_LEVEL, OPT__UM_IC_NVAR, OPT__UM_IC_LOAD_NRANK, OPT__GPUID_SELECT, OPT__PATCH_COUNT;
+int                  OPT__UM_IC_LEVEL_MIN, OPT__UM_IC_LEVEL_MAX;
 int                  INIT_DUMPID, INIT_SUBSAMPLING_NCELL, OPT__TIMING_BARRIER, OPT__REUSE_MEMORY, RESTART_LOAD_NRANK;
 bool                 OPT__FLAG_RHO, OPT__FLAG_RHO_GRADIENT, OPT__FLAG_USER, OPT__FLAG_LOHNER_DENS, OPT__FLAG_REGION;
 bool                 OPT__DT_USER, OPT__RECORD_DT, OPT__RECORD_MEMORY, OPT__MEMORY_POOL, OPT__RESTART_RESET;
@@ -175,8 +176,18 @@ bool                 GRACKLE_CMB_FLOOR;
 bool                 GRACKLE_PE_HEATING;
 double               GRACKLE_PE_HEATING_RATE;
 char                 GRACKLE_CLOUDY_TABLE[MAX_STRING];
+int                  GRACKLE_THREE_BODY_RATE;
+int                  GRACKLE_CIE_COOLING;
+int                  GRACKLE_H2_OPA_APPROX;
 int                  CHE_GPU_NPGROUP;
+
+#ifdef GRACKLE_H2_SOBOLEV
+double              *H2_Op_T_Table     = NULL ;
+double              *H2_Op_Alpha_Table = NULL ; 
+int                  H2_Op_N_elem      = 500  ;
 #endif
+
+#endif // SUPPORT_GRACKLE
 
 // (2-8) star formation
 #ifdef STAR_FORMATION

@@ -50,6 +50,8 @@ const TestProbID_t
    TESTPROB_HYDRO_MHD_ORSZAG_TANG_VORTEX       =   14,
    TESTPROB_HYDRO_MHD_LINEAR_WAVE              =   15,
    TESTPROB_HYDRO_JEANS_INSTABILITY            =   16,
+   
+   TESTPROB_HYDRO_POPIII_SOBOLEV               =   51,
 
    TESTPROB_ELBDM_EXTPOT                       = 1000;
 

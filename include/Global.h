@@ -48,13 +48,14 @@ extern int        Flu_ParaBuf;                        // number of parallel buff
 extern int        PassiveNorm_NVar;
 extern int        PassiveNorm_VarIdx[NCOMP_PASSIVE];
 
-extern double     BOX_SIZE, DT__FLUID, DT__FLUID_INIT, END_T, OUTPUT_DT, DT__SYNC_PARENT_LV, DT__SYNC_CHILDREN_LV;
+extern double     BOX_SIZE, DT__MAX, DT__FLUID, DT__FLUID_INIT, END_T, OUTPUT_DT, DT__SYNC_PARENT_LV, DT__SYNC_CHILDREN_LV;
 extern long int   END_STEP;
 extern int        NX0_TOT[3], OUTPUT_STEP, REGRID_COUNT, FLU_GPU_NPGROUP, OMP_NTHREAD;
 extern int        MPI_NRank, MPI_NRank_X[3];
 extern int        GPU_NSTREAM, FLAG_BUFFER_SIZE, FLAG_BUFFER_SIZE_MAXM1_LV, FLAG_BUFFER_SIZE_MAXM2_LV, MAX_LEVEL;
 
 extern int        OPT__UM_IC_LEVEL, OPT__UM_IC_NVAR, OPT__UM_IC_LOAD_NRANK, OPT__GPUID_SELECT, OPT__PATCH_COUNT;
+extern int        OPT__UM_IC_LEVEL_MIN, OPT__UM_IC_LEVEL_MAX;
 extern int        INIT_DUMPID, INIT_SUBSAMPLING_NCELL, OPT__TIMING_BARRIER, OPT__REUSE_MEMORY, RESTART_LOAD_NRANK;
 extern double     OUTPUT_PART_X, OUTPUT_PART_Y, OUTPUT_PART_Z, AUTO_REDUCE_DT_FACTOR, AUTO_REDUCE_DT_FACTOR_MIN;
 extern double     OPT__CK_MEMFREE, INT_MONO_COEFF, UNIT_L, UNIT_M, UNIT_T, UNIT_V, UNIT_D, UNIT_E, UNIT_P;
@@ -197,8 +198,16 @@ extern bool            GRACKLE_CMB_FLOOR;
 extern bool            GRACKLE_PE_HEATING;
 extern double          GRACKLE_PE_HEATING_RATE;
 extern char            GRACKLE_CLOUDY_TABLE[MAX_STRING];
+extern int             GRACKLE_THREE_BODY_RATE;
+extern int             GRACKLE_CIE_COOLING;
+extern int             GRACKLE_H2_OPA_APPROX;
 extern int             CHE_GPU_NPGROUP;
+
+#ifdef GRACKLE_H2_SOBOLEV
+extern double         *H2_Op_T_Table, *H2_Op_Alpha_Table ;
+extern int             H2_Op_N_elem;
 #endif
+#endif // SUPPORT_GRACKLE
 
 
 // (2-8) star formation
