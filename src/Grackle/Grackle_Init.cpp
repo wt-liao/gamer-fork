@@ -61,11 +61,22 @@ void Grackle_Init()
    Che_Units.a_value              = Time[0];
 
 #  else
+   // 1 pc
+   /*
    Che_Units.comoving_coordinates = 0;
-   Che_Units.density_units        = UNIT_D;
-   Che_Units.length_units         = UNIT_L;
-   Che_Units.time_units           = UNIT_T;
-   Che_Units.velocity_units       = UNIT_V;
+   Che_Units.density_units        = 6.767925712378867e-23;  //UNIT_D;
+   Che_Units.length_units         = 3.0856775809623245e+18; //UNIT_L;
+   Che_Units.time_units           = 470526744110469.3;      //UNIT_T;
+   Che_Units.velocity_units       = 6557.921775085913;      //UNIT_V;
+   Che_Units.a_units              = 1.0;
+   Che_Units.a_value              = 1.0;
+   */
+   // 0.1 pc
+   Che_Units.comoving_coordinates = 0;
+   Che_Units.density_units        = 6.767925712378866e-20;  //UNIT_D;
+   Che_Units.length_units         = 3.0856775809623245e+17; //UNIT_L;
+   Che_Units.time_units           = 14879362114123.01;      //UNIT_T;
+   Che_Units.velocity_units       = 20737.969526485944;     //UNIT_V;
    Che_Units.a_units              = 1.0;
    Che_Units.a_value              = 1.0;
 #  endif
@@ -107,6 +118,9 @@ void Grackle_Init()
 
 #  if ( MODEL == HYDRO )
    grackle_data->Gamma                      = GAMMA;
+
+#  elif ( MODEL == MHD )
+#  warning : WAIT MHD !!!
 #  endif
 
 
