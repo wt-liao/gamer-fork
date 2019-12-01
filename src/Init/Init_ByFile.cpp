@@ -188,7 +188,6 @@ void Init_ByFile()
 
 
 // 3. assign data on level OPT__UM_IC_LEVEL by the input file UM_IC
-   //###
    for (int lv=OPT__UM_IC_LEVEL_MAX; lv>=OPT__UM_IC_LEVEL_MIN; lv--) {
       // 3.1 filename for each level
       string lv_str  = to_string(lv);
@@ -196,11 +195,16 @@ void Init_ByFile()
       
       // 3.2 assign data
       Init_ByFile_AssignData( UM_Filename_lv.c_str(), lv, OPT__UM_IC_NVAR, OPT__UM_IC_LOAD_NRANK, OPT__UM_IC_FORMAT );
+      
+      // 3.3 MHD
+#     if (defined MHD) && (defined GRACKLE_H2_SOBOLEV)
+      if ( OPT__INIT_BFIELD_BYFILE )   MHD_Init_BField_ByFile(lv);
+#     endif
  
-      // 3.3 get buffer data
+      // 3.4 get buffer data
 #     ifdef LOAD_BALANCE
       MPI_Barrier( MPI_COMM_WORLD );
-      Buf_GetBufferData( OPT__UM_IC_LEVEL, amr->FluSg[OPT__UM_IC_LEVEL], amr->MagSg[OPT__UM_IC_LEVEL], NULL_INT,
+      Buf_GetBufferData( lv, amr->FluSg[lv], amr->MagSg[lv], NULL_INT,
                          DATA_GENERAL, _TOTAL, _MAG, Flu_ParaBuf, USELB_YES );
 #     endif
    }
@@ -466,6 +470,58 @@ void Init_ByFile_AssignData( const char UM_Filename[], const int UM_lv, const in
                      amr->patch[ amr->FluSg[UM_lv] ][UM_lv][PID]->fluid[v][k][j][i] = fluid_out[v];
                }}}
             } // for (int LocalID=0; LocalID<8; LocalID++)
+            
+#           if (defined MHD) && (defined SUPPORT_GRACKLE) && (defined GRACKLE_H2_SOBOLEV)
+            //### add mhd here!
+            //### define NSub, dh_sub
+            // use function in Hydro_Init_ByFunction_AssignData
+            // or use MHD_Init_BField_ByFile
+            if ( !OPT__INIT_BFIELD_BYFILE ) 
+            {
+               for (int LocalID=0; LocalID<8; LocalID++)
+               {
+                  const int PID    = PID0 + LocalID;
+                  
+                  real magnetic_1v, magnetic_sub[NCOMP_MAG];
+
+            //    loop over B_X/Y/Z to set one component at a time
+            //    --> because different components are defined at different cell faces
+                  for (int v=0; v<NCOMP_MAG; v++)
+                  {
+                     int    ijk_end[3], sub_end[3], idx=0;
+                     double dxyz0[3];
+
+                     for (int d=0; d<3; d++)
+                     {
+                        ijk_end[d] = ( d == v ) ? PS1+1 : PS1;
+                        sub_end[d] = ( d == v ) ? 1     : NSub;
+                        dxyz0  [d] = ( d == v ) ? 0.0   : 0.5*dh_sub;
+                     }
+
+                     for (int k=0; k<ijk_end[2]; k++)    {  const double z0 = amr->patch[0][UM_lv][PID]->EdgeL[2] + k*dh + dxyz0[2];
+                     for (int j=0; j<ijk_end[1]; j++)    {  const double y0 = amr->patch[0][UM_lv][PID]->EdgeL[1] + j*dh + dxyz0[1];
+                     for (int i=0; i<ijk_end[0]; i++)    {  const double x0 = amr->patch[0][UM_lv][PID]->EdgeL[0] + i*dh + dxyz0[0];
+
+                        magnetic_1v = (real)0.0;
+
+                        for (int kk=0; kk<sub_end[2]; kk++)    {  const double z = z0 + kk*dh_sub;
+                        for (int jj=0; jj<sub_end[1]; jj++)    {  const double y = y0 + jj*dh_sub;
+                        for (int ii=0; ii<sub_end[0]; ii++)    {  const double x = x0 + ii*dh_sub;
+
+                           Init_Function_BField_User_Ptr( magnetic_sub, x, y, z, Time[lv], lv, NULL );
+
+                           magnetic_1v += magnetic_sub[v];
+
+                        }}}
+
+                        amr->patch[ amr->MagSg[UM_lv] ][UM_lv][PID]->magnetic[v][ idx ++ ] = magnetic_1v*_NSub2;
+                     }}} // i,j,k
+                  }
+               } // for (int LocalID=0; LocalID<8; LocalID++)
+               
+            } // !OPT__INIT_BFIELD_BYFILE
+#           endif
+            
          } // for (int PID0=0; PID0<amr->NPatchComma[UM_lv][1]; PID0+=8)
 
          fclose( File );
@@ -554,7 +610,7 @@ void Init_ByFile_Default( real fluid_out[], const real fluid_in[], const int nva
 
 #  ifdef MHD
 #  warning : WAIT MHD !!!
-   Aux_Error( ERROR_INFO, "MHD is NOT supported yet !!\n" );
+   //Aux_Error( ERROR_INFO, "MHD is NOT supported yet !!\n" );
    const real EngyB = NULL_REAL;
 #  else
    const real EngyB = NULL_REAL;

@@ -4,6 +4,10 @@
 #include "hdf5.h"
 #endif
 
+#include <string>
+#include <sstream> // for crafting to_string()
+using std::string;
+
 static int nAx, nAy, nAz;
 static double Axmin, Aymin, Azmin;
 static double Adx, Ady, Adz;
@@ -17,6 +21,17 @@ void VecPot_ReadField( hid_t mag_file_id, const int ibegin, const int jbegin,
                        const int kbegin, const int iend, const int jend,
                        const int kend, double Ax[], double Ay[], double Az[] );
 #endif
+
+                       
+// to_string function
+// a get away, since std::to_string() cannot be found on Blue Waters
+static string to_string( int input_int );
+
+string to_string(int input_int) {
+   std::ostringstream os;
+   os << input_int;
+   return os.str();
+}
 
 //-------------------------------------------------------------------------------------------------------
 // Function    :  MHD_Init_BField_ByFile
@@ -43,13 +58,14 @@ void MHD_Init_BField_ByFile( const int B_lv )
 
    if ( MPI_Rank == 0 )    Aux_Message( stdout, "   Loading the magnetic field from the input file ...\n" );
 
-   const char B_Filename[] = "B_IC";
+   const string B_Filename = "B_IC_lv" + to_string(B_lv);
+   //const char B_Filename[] = "B_IC";
 
    const double dh       = amr->dh[B_lv];
 
    double *Axf, *Ayf, *Azf;
 
-   if ( !Aux_CheckFileExist(B_Filename) )
+   if ( !Aux_CheckFileExist(B_Filename.c_str()) )
       Aux_Error( ERROR_INFO, "file \"%s\" does not exist !!\n", B_Filename );
 
 // Open the magnetic field file and determine the dimensionality of the vector
@@ -62,7 +78,7 @@ void MHD_Init_BField_ByFile( const int B_lv )
    hsize_t dims[3], maxdims[3];
    int ndim;
 
-   hid_t mag_file_id = H5Fopen(B_Filename, H5F_ACC_RDONLY, H5P_DEFAULT);
+   hid_t mag_file_id = H5Fopen(B_Filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
 
    if ( B_lv == 0 ) {
 
@@ -129,11 +145,17 @@ void MHD_Init_BField_ByFile( const int B_lv )
    double Axmax = Axcoord[nAx-1]+0.5*Adx;
    double Aymax = Aycoord[nAy-1]+0.5*Ady;
    double Azmax = Azcoord[nAz-1]+0.5*Adz;
-
+   
+   /*
    if ( amr->BoxEdgeL[0] < Axmin+2*Adx || amr->BoxEdgeR[0] >= Axmax-2*Adx ||
         amr->BoxEdgeL[1] < Aymin+2*Ady || amr->BoxEdgeR[1] >= Aymax-2*Ady ||
         amr->BoxEdgeL[2] < Azmin+2*Adz || amr->BoxEdgeR[2] >= Azmax-2*Adz )
       Aux_Error( ERROR_INFO, "Input grid is smaller than the simulation domain !!" );
+   */
+   Aux_Message(stdout, "Init_BField_ByFile at Lv=%d: \n
+                        \t Input_left_edge =(%12.6e, %12.6e, %12.6e); 
+                        \t Input_right_edge=(%12.6e, %12.6e, %12.6e). \n", 
+               B_lv, Axmin, Aymin, Azmin, Axmax, Aymax, Azmax);
 
    double *Ax = new double [ CUBE(PS1+1) ];
    double *Ay = new double [ CUBE(PS1+1) ];
