@@ -66,7 +66,7 @@ void MHD_Init_BField_ByFile( const int B_lv )
    double *Axf, *Ayf, *Azf;
 
    if ( !Aux_CheckFileExist(B_Filename.c_str()) )
-      Aux_Error( ERROR_INFO, "file \"%s\" does not exist !!\n", B_Filename );
+      Aux_Error( ERROR_INFO, "file \"%s\" does not exist !!\n", B_Filename.c_str() );
 
 // Open the magnetic field file and determine the dimensionality of the vector
 // potential grid
@@ -79,8 +79,9 @@ void MHD_Init_BField_ByFile( const int B_lv )
    int ndim;
 
    hid_t mag_file_id = H5Fopen(B_Filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
+   //hid_t mag_file_id = H5Fopen("B_IC_lv1", H5F_ACC_RDONLY, H5P_DEFAULT);
 
-   if ( B_lv == 0 ) {
+   if ( B_lv >= 0 ) {
 
      dataset = H5Dopen(mag_file_id, "magnetic_vector_potential_z", H5P_DEFAULT);
 
@@ -152,10 +153,9 @@ void MHD_Init_BField_ByFile( const int B_lv )
         amr->BoxEdgeL[2] < Azmin+2*Adz || amr->BoxEdgeR[2] >= Azmax-2*Adz )
       Aux_Error( ERROR_INFO, "Input grid is smaller than the simulation domain !!" );
    */
-   Aux_Message(stdout, "Init_BField_ByFile at Lv=%d: \n
-                        \t Input_left_edge =(%12.6e, %12.6e, %12.6e); 
-                        \t Input_right_edge=(%12.6e, %12.6e, %12.6e). \n", 
-               B_lv, Axmin, Aymin, Azmin, Axmax, Aymax, Azmax);
+   if (MPI_Rank == 0)
+   Aux_Message(stdout, "Init_BField_ByFile at Lv=%d: \n \t Input_left_edge =(%12.6e, %12.6e, %12.6e); \t Input_right_edge=(%12.6e, %12.6e, %12.6e). \n", 
+               B_lv, Axmin+3*Adx, Aymin+3*Ady, Azmin+3*Adz, Axmax-3*Adx, Aymax-3*Ady, Azmax-3*Adz);
 
    double *Ax = new double [ CUBE(PS1+1) ];
    double *Ay = new double [ CUBE(PS1+1) ];

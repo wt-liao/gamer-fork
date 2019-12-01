@@ -1,4 +1,5 @@
 #include "GAMER.h"
+#include "TestProb.h"
 
 // include library for string manipulation
 #include <string>
@@ -390,6 +391,12 @@ void Init_ByFile_AssignData( const char UM_Filename[], const int UM_lv, const in
    int StartIdx_Offset[3];
    for (int d=0; d<3; d++) StartIdx_Offset[d] = (UM_Size3D_Base[d] - UM_Size3D[d])/2 ;
 
+#  ifdef MHD
+   const int    NSub     = ( INIT_SUBSAMPLING_NCELL <= 0 ) ? 1 : INIT_SUBSAMPLING_NCELL;
+   const double dh_sub   = dh / NSub;
+   const double _NSub2   = 1.0/SQR(NSub);
+#  endif
+
 
 // load data with UM_LoadNRank ranks at a time
    for (int TRank0=0; TRank0<MPI_NRank; TRank0+=UM_LoadNRank)
@@ -508,7 +515,7 @@ void Init_ByFile_AssignData( const char UM_Filename[], const int UM_lv, const in
                         for (int jj=0; jj<sub_end[1]; jj++)    {  const double y = y0 + jj*dh_sub;
                         for (int ii=0; ii<sub_end[0]; ii++)    {  const double x = x0 + ii*dh_sub;
 
-                           Init_Function_BField_User_Ptr( magnetic_sub, x, y, z, Time[lv], lv, NULL );
+                           Init_Function_BField_User_Ptr( magnetic_sub, x, y, z, Time[UM_lv], UM_lv, NULL );
 
                            magnetic_1v += magnetic_sub[v];
 
@@ -609,7 +616,7 @@ void Init_ByFile_Default( real fluid_out[], const real fluid_in[], const int nva
 #  if   ( MODEL == HYDRO )
 
 #  ifdef MHD
-#  warning : WAIT MHD !!!
+//#  warning : WAIT MHD !!!
    //Aux_Error( ERROR_INFO, "MHD is NOT supported yet !!\n" );
    const real EngyB = NULL_REAL;
 #  else
