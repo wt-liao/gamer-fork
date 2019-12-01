@@ -144,12 +144,12 @@ endif # PARTICLE
 # ------------------------------------------------------------------------------------
 # maximum number of AMR levels including the root level (level id = 0 ... NLEVEL-1)
 # --> must be set in any cases
-SIMU_OPTION += -DNLEVEL=18
+SIMU_OPTION += -DNLEVEL=20
 
 # maximum number of patches on each AMR level
 # --> must be set in any cases
 # 256^3 = 32768
-SIMU_OPTION += -DMAX_PATCH=1500000
+SIMU_OPTION += -DMAX_PATCH=10000000
 
 # GPU acceleration
 # --> must set GPU_ARCH as well
