@@ -150,6 +150,12 @@ void Flu_FixUp_Flux( const int lv )
 //             --> do NOT **store** these results yet since we want to skip the cells with unphysical results
                real CorrVal[NFLUX_TOTAL];    // values after applying the flux correction
                for (int v=0; v<NFLUX_TOTAL; v++)   CorrVal[v] = *FluidPtr1D[v] + FluxPtr[v][m][n]*Const[s];
+               for (int v=0; v<NFLUX_TOTAL; v++) {
+#              if (defined SUPPORT_GRACKLE) && (defined GRACKLE_H2_SOBOLEV)
+                  if ( (v!=Idx_alpha) && (v!=Idx_OpTauX) && (v!=Idx_OpTauY) && (v!=Idx_OpTauZ) )
+#              endif
+                  *FluidPtr1D[v] = CorrVal[v];
+               }
 
 
 //             calculate the pressure
