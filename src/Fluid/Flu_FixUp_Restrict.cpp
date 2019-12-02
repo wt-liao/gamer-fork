@@ -176,6 +176,10 @@ void Flu_FixUp_Restrict( const int FaLv, const int SonFluSg, const int FaFluSg, 
          for (int v=0; v<NFluVar; v++)
          {
             const int TFluVarIdx = TFluVarIdxList[v];
+#           if (defined SUPPORT_GRACKLE) && (defined GRACKLE_H2_SOBOLEV)
+            if ( (TFluVarIdx==Idx_alpha) || (TFluVarIdx==Idx_OpTauX) || (TFluVarIdx==Idx_OpTauX) || (TFluVarIdx==Idx_OpTauX))
+               continue;
+#           endif
             const real (*SonPtr)[PS1][PS1] = amr->patch[SonFluSg][SonLv][SonPID]->fluid[TFluVarIdx];
                   real (* FaPtr)[PS1][PS1] = amr->patch[ FaFluSg][ FaLv][ FaPID]->fluid[TFluVarIdx];
 
