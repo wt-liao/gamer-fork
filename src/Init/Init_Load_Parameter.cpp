@@ -75,6 +75,8 @@ void Init_Load_Parameter()
 // do no check PAR_NPAR since it may be reset by restart
    ReadPara->Add( "PAR_NPAR",                   &amr->Par->NPar_Active_AllRank,  -1L,              NoMin_long,    NoMax_long     );
    ReadPara->Add( "PAR_INIT",                   &amr->Par->Init,                 -1,               1,             3              );
+   ReadPara->Add( "PAR_IC_FORMAT",              &amr->Par->ParICFormat,      PAR_IC_FORMAT_ATT_ID, 1,             2              );
+   ReadPara->Add( "PAR_IC_MASS",                &amr->Par->ParICMass,            -1.0,             NoMin_double,  NoMax_double   );
    ReadPara->Add( "PAR_INTERP",                 &amr->Par->Interp,                PAR_INTERP_CIC,  1,             3              );
    ReadPara->Add( "PAR_INTEG",                  &amr->Par->Integ,                 PAR_INTEG_KDK,   1,             2              );
    ReadPara->Add( "PAR_IMPROVE_ACC",            &amr->Par->ImproveAcc,            true,            Useless_bool,  Useless_bool   );
@@ -93,6 +95,7 @@ void Init_Load_Parameter()
 
 
 // time-step
+   ReadPara->Add( "DT__MAX",                    &DT__MAX,                        -1.0,             NoMin_double,  NoMax_double   );
 // do not check DT__FLUID/FLUID_INIT/GRAVITY/PARVEL_MAX since they may be reset by Init_ResetDefaultParameter()
    ReadPara->Add( "DT__FLUID",                  &DT__FLUID,                      -1.0,             NoMin_double,  NoMax_double   );
    ReadPara->Add( "DT__FLUID_INIT",             &DT__FLUID_INIT,                 -1.0,             NoMin_double,  NoMax_double   );
@@ -170,7 +173,7 @@ void Init_Load_Parameter()
 
 // Grackle
 #  ifdef SUPPORT_GRACKLE
-   ReadPara->Add( "GRACKLE_MODE",               &GRACKLE_MODE,                    1,               0,             2              );
+   ReadPara->Add( "GRACKLE_ACTIVATE",           &GRACKLE_ACTIVATE,                true,            Useless_bool,  Useless_bool   );
    ReadPara->Add( "GRACKLE_VERBOSE",            &GRACKLE_VERBOSE,                 true,            Useless_bool,  Useless_bool   );
    ReadPara->Add( "GRACKLE_COOLING",            &GRACKLE_COOLING,                 true,            Useless_bool,  Useless_bool   );
    ReadPara->Add( "GRACKLE_PRIMORDIAL",         &GRACKLE_PRIMORDIAL,              0,               0,             3              );
@@ -204,9 +207,7 @@ void Init_Load_Parameter()
    ReadPara->Add( "GAMMA",                      &GAMMA,                           5.0/3.0,         1.0,           NoMax_double   );
    ReadPara->Add( "MOLECULAR_WEIGHT",           &MOLECULAR_WEIGHT,                0.6,             Eps_double,    NoMax_double   );
    ReadPara->Add( "MINMOD_COEFF",               &MINMOD_COEFF,                    1.5,             1.0,           2.0            );
-   ReadPara->Add( "EP_COEFF",                   &EP_COEFF,                        1.25,            1.0,           NoMax_double   );
    ReadPara->Add( "OPT__LR_LIMITER",            &OPT__LR_LIMITER,                 VL_GMINMOD,      0,             5              );
-   ReadPara->Add( "OPT__WAF_LIMITER",           &OPT__WAF_LIMITER,                WAF_VANLEER,     0,             4              );
    ReadPara->Add( "OPT__1ST_FLUX_CORR",         &OPT__1ST_FLUX_CORR,              FIRST_FLUX_CORR_3D1D, 0,        2              );
    ReadPara->Add( "OPT__1ST_FLUX_CORR_SCHEME",  &OPT__1ST_FLUX_CORR_SCHEME,       RSOLVER_1ST_ROE, 0,             3              );
 #  ifdef DUAL_ENERGY
@@ -271,6 +272,7 @@ void Init_Load_Parameter()
    ReadPara->Add( "OPT__GRA_P5_GRADIENT",       &OPT__GRA_P5_GRADIENT,            false,           Useless_bool,  Useless_bool   );
    ReadPara->Add( "OPT__GRAVITY_TYPE",          &OPT__GRAVITY_TYPE,              -1,               1,             3              );
    ReadPara->Add( "OPT__EXTERNAL_POT",          &OPT__EXTERNAL_POT,               false,           Useless_bool,  Useless_bool   );
+   ReadPara->Add( "OPT__GRAVITY_EXTRA_MASS",    &OPT__GRAVITY_EXTRA_MASS,         false,           Useless_bool,  Useless_bool   );
 #  endif // #ifdef GRAVITY
 
 
@@ -279,7 +281,14 @@ void Init_Load_Parameter()
    ReadPara->Add( "RESTART_LOAD_NRANK",         &RESTART_LOAD_NRANK,              1,               1,             NoMax_int      );
    ReadPara->Add( "OPT__RESTART_RESET",         &OPT__RESTART_RESET,              false,           Useless_bool,  Useless_bool   );
    ReadPara->Add( "OPT__UM_IC_LEVEL",           &OPT__UM_IC_LEVEL,                0,               0,             TOP_LEVEL      );
-   ReadPara->Add( "OPT__UM_IC_NVAR",            &OPT__UM_IC_NVAR,                 NCOMP_TOTAL,     NoMin_int,     NCOMP_TOTAL    );
+// do not check OPT__UM_IC_NVAR since it depends on OPT__INIT and MODEL
+// --> also, we do not load the density field for ELBDM
+#  if ( MODEL == ELBDM )
+   ReadPara->Add( "OPT__UM_IC_NVAR",            &OPT__UM_IC_NVAR,                -1,               NoMin_int,     NCOMP_TOTAL-1  );
+#  else
+   ReadPara->Add( "OPT__UM_IC_NVAR",            &OPT__UM_IC_NVAR,                -1,               NoMin_int,     NCOMP_TOTAL    );
+#  endif
+   ReadPara->Add( "OPT__UM_IC_FORMAT",          &OPT__UM_IC_FORMAT,             UM_IC_FORMAT_VZYX, 1,             2              );
    ReadPara->Add( "OPT__UM_IC_DOWNGRADE",       &OPT__UM_IC_DOWNGRADE,            true,            Useless_bool,  Useless_bool   );
    ReadPara->Add( "OPT__UM_IC_REFINE",          &OPT__UM_IC_REFINE,               true,            Useless_bool,  Useless_bool   );
    ReadPara->Add( "OPT__UM_IC_LOAD_NRANK",      &OPT__UM_IC_LOAD_NRANK,           1,               1,             NoMax_int      );
@@ -335,7 +344,7 @@ void Init_Load_Parameter()
 // yt inline analysis
 #  ifdef SUPPORT_LIBYT
    ReadPara->Add( "YT_SCRIPT",                   YT_SCRIPT,                       Useless_str,     Useless_str,   Useless_str    );
-   ReadPara->Add( "YT_VERBOSE",                 &YT_VERBOSE,                      1,               0,             3              );
+   ReadPara->Add( "YT_VERBOSE",           (int*)&YT_VERBOSE,                      1,               0,             3              );
 #  endif
 
 
@@ -345,6 +354,8 @@ void Init_Load_Parameter()
    ReadPara->Add( "OPT__TIMING_BARRIER",        &OPT__TIMING_BARRIER,            -1,               NoMin_int,     NoMax_int      );
    ReadPara->Add( "OPT__TIMING_BALANCE",        &OPT__TIMING_BALANCE,             false,           Useless_bool,  Useless_bool   );
    ReadPara->Add( "OPT__TIMING_MPI",            &OPT__TIMING_MPI,                 false,           Useless_bool,  Useless_bool   );
+   ReadPara->Add( "OPT__RECORD_NOTE",           &OPT__RECORD_NOTE,                true,            Useless_bool,  Useless_bool   );
+   ReadPara->Add( "OPT__RECORD_UNPHY",          &OPT__RECORD_UNPHY,               true,            Useless_bool,  Useless_bool   );
    ReadPara->Add( "OPT__RECORD_MEMORY",         &OPT__RECORD_MEMORY,              true,            Useless_bool,  Useless_bool   );
    ReadPara->Add( "OPT__RECORD_PERFORMANCE",    &OPT__RECORD_PERFORMANCE,         true,            Useless_bool,  Useless_bool   );
    ReadPara->Add( "OPT__MANUAL_CONTROL",        &OPT__MANUAL_CONTROL,             true,            Useless_bool,  Useless_bool   );

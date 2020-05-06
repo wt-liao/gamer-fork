@@ -407,7 +407,7 @@ void EvolveLevel( const int lv, const double dTime_FaLv )
          if ( OPT__VERBOSE  &&  MPI_Rank == 0 )
             Aux_Message( stdout, "   Lv %2d: Par_PassParticle2Son %12s ... ", lv, "" );
 
-         TIMING_FUNC(   Par_PassParticle2Son_AllPatch( lv, TimingSendPar_Yes ),
+         TIMING_FUNC(   Par_PassParticle2Son_MultiPatch( lv, PAR_PASS2SON_EVOLVE, TimingSendPar_Yes, NULL_INT, NULL ),
                         Timer_Par_2Son[lv]   );
 
          if ( OPT__VERBOSE  &&  MPI_Rank == 0 )    Aux_Message( stdout, "done\n" );
@@ -423,7 +423,7 @@ void EvolveLevel( const int lv, const double dTime_FaLv )
 //    6-1. Grackle cooling/heating
 // *********************************
 #     ifdef SUPPORT_GRACKLE
-      if ( GRACKLE_MODE != GRACKLE_MODE_NONE )
+      if ( GRACKLE_ACTIVATE )
       {
          const int SaveSg_Che = SaveSg_Flu;  // save in the same FluSg
 
@@ -435,7 +435,7 @@ void EvolveLevel( const int lv, const double dTime_FaLv )
                         Timer_Che_Advance[lv]   );
 
          if ( OPT__VERBOSE  &&  MPI_Rank == 0 )    Aux_Message( stdout, "done\n" );
-      } // if ( GRACKLE_MODE != GRACKLE_MODE_NONE )
+      } // if ( GRACKLE_ACTIVATE )
 #     endif // #ifdef SUPPORT_GRACKLE
 
 
@@ -447,7 +447,7 @@ void EvolveLevel( const int lv, const double dTime_FaLv )
          if ( OPT__VERBOSE  &&  MPI_Rank == 0 )
             Aux_Message( stdout, "   Lv %2d: Par_PassParticle2Son %12s ... ", lv, "" );
 
-         TIMING_FUNC(   Par_PassParticle2Son_AllPatch( lv, TimingSendPar_Yes ),
+         TIMING_FUNC(   Par_PassParticle2Son_MultiPatch( lv, PAR_PASS2SON_EVOLVE, TimingSendPar_Yes, NULL_INT, NULL ),
                         Timer_Par_2Son[lv]   );
 
          if ( OPT__VERBOSE  &&  MPI_Rank == 0 )    Aux_Message( stdout, "done\n" );

@@ -192,6 +192,9 @@ void Prepare_PatchData( const int lv, const double PrepTime, real *h_Input_Array
          Aux_Error( ERROR_INFO, "unsupported parameter FluBC[%d] = %d !!\n", f, FluBC[f] );
 
 #     if ( MODEL != HYDRO )
+      if ( FluBC[f] == BC_FLU_OUTFLOW )
+         Aux_Error( ERROR_INFO, "outflow boundary condition (OPT__BC_FLU=2) only works with HYDRO !!\n" );
+
       if ( FluBC[f] == BC_FLU_REFLECTING )
          Aux_Error( ERROR_INFO, "reflecting boundary condition (OPT__BC_FLU=3) only works with HYDRO !!\n" );
 #     endif
@@ -843,17 +846,17 @@ void Prepare_PatchData( const int lv, const double PrepTime, real *h_Input_Array
 
                   for (int v=0; v<NCOMP_FLUID; v++)   Fluid[v] = amr->patch[FluSg][lv][PID]->fluid[v][k][j][i];
 
-                  Array_Ptr[Idx1] = CPU_GetPressure( Fluid[DENS], Fluid[MOMX], Fluid[MOMY], Fluid[MOMZ], Fluid[ENGY],
-                                                     Gamma_m1, CheckMinPres_No, NULL_REAL );
+                  Array_Ptr[Idx1] = Hydro_GetPressure( Fluid[DENS], Fluid[MOMX], Fluid[MOMY], Fluid[MOMZ], Fluid[ENGY],
+                                                       Gamma_m1, CheckMinPres_No, NULL_REAL );
 
                   if ( FluIntTime ) // temporal interpolation
                   {
                      for (int v=0; v<NCOMP_FLUID; v++)   Fluid[v] = amr->patch[FluSg_IntT][lv][PID]->fluid[v][k][j][i];
 
                      Array_Ptr[Idx1] =   FluWeighting     *Array_Ptr[Idx1]
-                                       + FluWeighting_IntT*CPU_GetPressure( Fluid[DENS], Fluid[MOMX], Fluid[MOMY],
-                                                                            Fluid[MOMZ], Fluid[ENGY],
-                                                                            Gamma_m1, CheckMinPres_No, NULL_REAL );
+                                       + FluWeighting_IntT*Hydro_GetPressure( Fluid[DENS], Fluid[MOMX], Fluid[MOMY],
+                                                                              Fluid[MOMZ], Fluid[ENGY],
+                                                                              Gamma_m1, CheckMinPres_No, NULL_REAL );
                   }
 
                   Idx1 ++;
@@ -871,17 +874,17 @@ void Prepare_PatchData( const int lv, const double PrepTime, real *h_Input_Array
 
                   for (int v=0; v<NCOMP_FLUID; v++)   Fluid[v] = amr->patch[FluSg][lv][PID]->fluid[v][k][j][i];
 
-                  Array_Ptr[Idx1] = CPU_GetTemperature( Fluid[DENS], Fluid[MOMX], Fluid[MOMY], Fluid[MOMZ], Fluid[ENGY],
-                                                        Gamma_m1, (MinPres>=0.0), MinPres );
+                  Array_Ptr[Idx1] = Hydro_GetTemperature( Fluid[DENS], Fluid[MOMX], Fluid[MOMY], Fluid[MOMZ], Fluid[ENGY],
+                                                          Gamma_m1, (MinPres>=0.0), MinPres );
 
                   if ( FluIntTime ) // temporal interpolation
                   {
                      for (int v=0; v<NCOMP_FLUID; v++)   Fluid[v] = amr->patch[FluSg_IntT][lv][PID]->fluid[v][k][j][i];
 
                      Array_Ptr[Idx1] =   FluWeighting     *Array_Ptr[Idx1]
-                                       + FluWeighting_IntT*CPU_GetTemperature( Fluid[DENS], Fluid[MOMX], Fluid[MOMY],
-                                                                               Fluid[MOMZ], Fluid[ENGY],
-                                                                               Gamma_m1, (MinPres>=0.0), MinPres );
+                                       + FluWeighting_IntT*Hydro_GetTemperature( Fluid[DENS], Fluid[MOMX], Fluid[MOMY],
+                                                                                 Fluid[MOMZ], Fluid[ENGY],
+                                                                                 Gamma_m1, (MinPres>=0.0), MinPres );
                   }
 
                   Idx1 ++;
@@ -1048,17 +1051,17 @@ void Prepare_PatchData( const int lv, const double PrepTime, real *h_Input_Array
 
                         for (int v=0; v<NCOMP_FLUID; v++)   Fluid[v] = amr->patch[FluSg][lv][SibPID]->fluid[v][K2][J2][I2];
 
-                        Array_Ptr[Idx1] = CPU_GetPressure( Fluid[DENS], Fluid[MOMX], Fluid[MOMY], Fluid[MOMZ], Fluid[ENGY],
-                                                           Gamma_m1, CheckMinPres_No, NULL_REAL );
+                        Array_Ptr[Idx1] = Hydro_GetPressure( Fluid[DENS], Fluid[MOMX], Fluid[MOMY], Fluid[MOMZ], Fluid[ENGY],
+                                                             Gamma_m1, CheckMinPres_No, NULL_REAL );
 
                         if ( FluIntTime ) // temporal interpolation
                         {
                            for (int v=0; v<NCOMP_FLUID; v++)   Fluid[v] = amr->patch[FluSg_IntT][lv][SibPID]->fluid[v][K2][J2][I2];
 
                            Array_Ptr[Idx1] =   FluWeighting     *Array_Ptr[Idx1]
-                                             + FluWeighting_IntT*CPU_GetPressure( Fluid[DENS], Fluid[MOMX], Fluid[MOMY],
-                                                                                  Fluid[MOMZ], Fluid[ENGY],
-                                                                                  Gamma_m1, CheckMinPres_No, NULL_REAL );
+                                             + FluWeighting_IntT*Hydro_GetPressure( Fluid[DENS], Fluid[MOMX], Fluid[MOMY],
+                                                                                    Fluid[MOMZ], Fluid[ENGY],
+                                                                                    Gamma_m1, CheckMinPres_No, NULL_REAL );
                         }
 
                         Idx1 ++;
@@ -1076,17 +1079,17 @@ void Prepare_PatchData( const int lv, const double PrepTime, real *h_Input_Array
 
                         for (int v=0; v<NCOMP_FLUID; v++)   Fluid[v] = amr->patch[FluSg][lv][SibPID]->fluid[v][K2][J2][I2];
 
-                        Array_Ptr[Idx1] = CPU_GetTemperature( Fluid[DENS], Fluid[MOMX], Fluid[MOMY], Fluid[MOMZ], Fluid[ENGY],
-                                                              Gamma_m1, (MinPres>=0.0), MinPres );
+                        Array_Ptr[Idx1] = Hydro_GetTemperature( Fluid[DENS], Fluid[MOMX], Fluid[MOMY], Fluid[MOMZ], Fluid[ENGY],
+                                                                Gamma_m1, (MinPres>=0.0), MinPres );
 
                         if ( FluIntTime ) // temporal interpolation
                         {
                            for (int v=0; v<NCOMP_FLUID; v++)   Fluid[v] = amr->patch[FluSg_IntT][lv][SibPID]->fluid[v][K2][J2][I2];
 
                            Array_Ptr[Idx1] =   FluWeighting     *Array_Ptr[Idx1]
-                                             + FluWeighting_IntT*CPU_GetTemperature( Fluid[DENS], Fluid[MOMX], Fluid[MOMY],
-                                                                                     Fluid[MOMZ], Fluid[ENGY],
-                                                                                     Gamma_m1, (MinPres>=0.0), MinPres );
+                                             + FluWeighting_IntT*Hydro_GetTemperature( Fluid[DENS], Fluid[MOMX], Fluid[MOMY],
+                                                                                       Fluid[MOMZ], Fluid[ENGY],
+                                                                                       Gamma_m1, (MinPres>=0.0), MinPres );
                         }
 
                         Idx1 ++;
@@ -1223,12 +1226,12 @@ void Prepare_PatchData( const int lv, const double PrepTime, real *h_Input_Array
                {
                   switch ( FluBC[ BC_Face[BC_Sibling] ] )
                   {
+#                    if ( MODEL == HYDRO )
                      case BC_FLU_OUTFLOW:
-                        Flu_BoundaryCondition_Outflow     ( Array_Ptr, BC_Face[BC_Sibling], NVar_Flu+NVar_Der, GhostSize,
+                        Hydro_BoundaryCondition_Outflow   ( Array_Ptr, BC_Face[BC_Sibling], NVar_Flu+NVar_Der, GhostSize,
                                                             PGSize1D, PGSize1D, PGSize1D, BC_Idx_Start, BC_Idx_End );
                      break;
 
-#                    if ( MODEL == HYDRO  ||  MODEL == MHD )
                      case BC_FLU_REFLECTING:
                         Hydro_BoundaryCondition_Reflecting( Array_Ptr, BC_Face[BC_Sibling], NVar_Flu,          GhostSize,
                                                             PGSize1D, PGSize1D, PGSize1D, BC_Idx_Start, BC_Idx_End,
@@ -1537,8 +1540,8 @@ void Prepare_PatchData( const int lv, const double PrepTime, real *h_Input_Array
 
 //             apply minimum pressure to the energy field
                for (int t=0; t<PGSize3D; t++)
-                  ArrayEngy[t] = CPU_CheckMinPresInEngy( ArrayDens[t], ArrayMomX[t], ArrayMomY[t], ArrayMomZ[t], ArrayEngy[t],
-                                                         Gamma_m1, _Gamma_m1, MinPres );
+                  ArrayEngy[t] = Hydro_CheckMinPresInEngy( ArrayDens[t], ArrayMomX[t], ArrayMomY[t], ArrayMomZ[t], ArrayEngy[t],
+                                                           Gamma_m1, _Gamma_m1, MinPres );
             } // if ( (TVar & _FLUID) == _FLUID )
          } // if ( MinPres >= (real)0.0 )
 #        endif // #if ( MODEL == HYDRO  ||  MODEL == MHD )
