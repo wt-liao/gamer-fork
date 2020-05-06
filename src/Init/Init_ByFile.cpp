@@ -479,6 +479,7 @@ void Init_ByFile_AssignData( const char UM_Filename[], const int UM_lv, const in
             } // for (int LocalID=0; LocalID<8; LocalID++)
             
 #           if (defined MHD) && (defined SUPPORT_GRACKLE) && (defined GRACKLE_H2_SOBOLEV)
+            /*
             //### add mhd here!
             //### define NSub, dh_sub
             // use function in Hydro_Init_ByFunction_AssignData
@@ -527,7 +528,8 @@ void Init_ByFile_AssignData( const char UM_Filename[], const int UM_lv, const in
                } // for (int LocalID=0; LocalID<8; LocalID++)
                
             } // !OPT__INIT_BFIELD_BYFILE
-#           endif
+            */
+#           endif // MHD
             
          } // for (int PID0=0; PID0<amr->NPatchComma[UM_lv][1]; PID0+=8)
 
