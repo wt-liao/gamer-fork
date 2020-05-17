@@ -77,10 +77,10 @@ SIMU_OPTION += -DDUAL_ENERGY=DE_ENPY
 # number of user-defined passively advected scalars
 # --> set it to 0 or comment it out if none is required
 # --> useless for RTVD
-SIMU_OPTION += -DNCOMP_PASSIVE_USER=22
+SIMU_OPTION += -DNCOMP_PASSIVE_USER=16
 
 # magnetohydrodynamics
-#SIMU_OPTION += -DMHD
+SIMU_OPTION += -DMHD
 
 
 # (b-2) ELBDM options
@@ -294,9 +294,9 @@ endif
 CUDA_PATH    := /usr/local/cuda/7.0
 FFTW_PATH    := $(HOME)/bin/fftw2-intel-18.0
 #MPI_PATH     := /usr/local/mpi/openmpi-1.8.4-intel-15.0
-HDF5_PATH    := /projects/ncsa/grav/softwares/miniconda2
-GRACKLE_PATH := /home/wliao10/software/grackle/lib
-GSL_PATH     := /usr/local/gsl/gsl-1.16
+HDF5_PATH    := /projects/ncsa/grav/softwares/miniconda3/lib
+GRACKLE_PATH := $(HOME)/bin/grackle
+#GSL_PATH     := /usr/local/gsl/gsl-1.16
 
 # UIUC-campus (gcc-4.9.2 + openmpi-1.8.4)
 #CUDA_PATH    := /usr/local/cuda/7.0
