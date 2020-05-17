@@ -286,6 +286,16 @@ void MHD_Init_BField_ByFile( const int B_lv )
          real Bz = ( Ay[idxi] - Ay[idx] - Ax[idxj] + Ax[idx] ) / dh;
          amr->patch[ amr->MagSg[B_lv] ][B_lv][PID]->magnetic[2][idxB] = Bz;
       }}}
+      
+      
+      //### add magnetic energy to fluid Sg
+      for (int k=0; k<PS1; k++) {
+      for (int j=0; j<PS1; j++) {
+      for (int i=0; i<PS1; i++) {
+         double B_engy = MHD_GetCellCenteredBEnergyInPatch(B_lv, PID, i, j, k, amr->MagSg[B_lv] );
+         amr->patch[ amr->FluSg[B_lv] ][B_lv][PID]->fluid[ENGY][k][j][i] += B_engy ;
+      }}}
+      
 
       delete [] Axf;
       delete [] Ayf;
